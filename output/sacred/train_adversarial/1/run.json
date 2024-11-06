@@ -1,0 +1,154 @@
+{
+  "artifacts": [],
+  "command": "gail",
+  "experiment": {
+    "base_dir": "/home/yi/miniconda3/envs/chefbot/lib/python3.10/site-packages/imitation/scripts/config",
+    "dependencies": [
+      "datasets==3.1.0",
+      "huggingface-sb3==3.0",
+      "imitation==1.0.0",
+      "numpy==1.25.2",
+      "sacred==0.8.6",
+      "stable-baselines3==2.2.1"
+    ],
+    "mainfile": "train_adversarial.py",
+    "name": "train_adversarial",
+    "repositories": [],
+    "sources": [
+      [
+        "train_adversarial.py",
+        "_sources/train_adversarial_d9c38bfafb6e3d60fef07b6a7dc3df8a.py"
+      ],
+      [
+        "../ingredients/__init__.py",
+        "_sources/__init___287628f92ab40174590052b0895907e9.py"
+      ],
+      [
+        "../ingredients/demonstrations.py",
+        "_sources/demonstrations_648e43b22cbf58ee26f064ded7a0db06.py"
+      ],
+      [
+        "../ingredients/environment.py",
+        "_sources/environment_f7e538ac405cd16aea9d7c16321df60e.py"
+      ],
+      [
+        "../ingredients/expert.py",
+        "_sources/expert_fed1b62fbd609ccecb288bd49910bbcf.py"
+      ],
+      [
+        "../ingredients/logging.py",
+        "_sources/logging_e3434de0ed79a29220b85539a95bd5ad.py"
+      ],
+      [
+        "../ingredients/policy.py",
+        "_sources/policy_cdd16472dd00071e2f1b95c843a81afd.py"
+      ],
+      [
+        "../ingredients/policy_evaluation.py",
+        "_sources/policy_evaluation_2fe49c2cba801d824a725cf851fb4fc4.py"
+      ],
+      [
+        "../ingredients/reward.py",
+        "_sources/reward_47d587e21f7b70c2b2fc392b57ddd784.py"
+      ],
+      [
+        "../ingredients/rl.py",
+        "_sources/rl_070a71113d5f26a0d45d00037e05fad1.py"
+      ],
+      [
+        "../ingredients/wb.py",
+        "_sources/wb_69d7ec6f84b488d37521eda98d6089c9.py"
+      ]
+    ]
+  },
+  "fail_trace": [
+    "Traceback (most recent call last):\n",
+    "  File \"/home/yi/miniconda3/envs/chefbot/lib/python3.10/site-packages/sacred/config/captured_function.py\", line 42, in captured_function\n    result = wrapped(*args, **kwargs)\n",
+    "  File \"/home/yi/miniconda3/envs/chefbot/lib/python3.10/site-packages/imitation/scripts/train_adversarial.py\", line 175, in gail\n    return train_adversarial(algo_cls=gail_algo.GAIL)\n",
+    "  File \"/home/yi/miniconda3/envs/chefbot/lib/python3.10/site-packages/sacred/config/captured_function.py\", line 42, in captured_function\n    result = wrapped(*args, **kwargs)\n",
+    "  File \"/home/yi/miniconda3/envs/chefbot/lib/python3.10/site-packages/imitation/scripts/train_adversarial.py\", line 120, in train_adversarial\n    expert_trajs = demonstrations.get_expert_trajectories()\n",
+    "  File \"/home/yi/miniconda3/envs/chefbot/lib/python3.10/site-packages/sacred/config/captured_function.py\", line 42, in captured_function\n    result = wrapped(*args, **kwargs)\n",
+    "  File \"/home/yi/miniconda3/envs/chefbot/lib/python3.10/site-packages/imitation/scripts/ingredients/demonstrations.py\", line 85, in get_expert_trajectories\n    return _constrain_number_of_demos(serialize.load(path))\n",
+    "  File \"/home/yi/miniconda3/envs/chefbot/lib/python3.10/site-packages/imitation/data/serialize.py\", line 45, in load\n    data = np.load(path, allow_pickle=True)  # works for both .npz and .pkl\n",
+    "  File \"/home/yi/miniconda3/envs/chefbot/lib/python3.10/site-packages/numpy/lib/npyio.py\", line 427, in load\n    fid = stack.enter_context(open(os_fspath(file), \"rb\"))\n",
+    "FileNotFoundError: [Errno 2] No such file or directory: 'quickstart/rl/rollouts/final.npz'\n"
+  ],
+  "heartbeat": "2024-11-04T13:20:43.176327",
+  "host": {
+    "ENV": {},
+    "cpu": "12th Gen Intel(R) Core(TM) i7-1265U",
+    "gpus": {
+      "driver_version": "535.183.01",
+      "gpus": [
+        {
+          "model": "NVIDIA T550 Laptop GPU",
+          "persistence_mode": false,
+          "total_memory": 4096
+        }
+      ]
+    },
+    "hostname": "yi",
+    "os": [
+      "Linux",
+      "Linux-6.8.0-48-generic-x86_64-with-glibc2.35"
+    ],
+    "python_version": "3.10.15"
+  },
+  "meta": {
+    "command": "gail",
+    "config_updates": {
+      "demonstrations": {
+        "path": "quickstart/rl/rollouts/final.npz",
+        "source": "local"
+      }
+    },
+    "named_configs": [
+      "pendulum",
+      "environment.fast",
+      "demonstrations.fast",
+      "policy_evaluation.fast",
+      "rl.fast",
+      "fast"
+    ],
+    "options": {
+      "--beat-interval": null,
+      "--capture": null,
+      "--comment": null,
+      "--debug": false,
+      "--enforce_clean": false,
+      "--file_storage": null,
+      "--force": false,
+      "--help": false,
+      "--id": null,
+      "--loglevel": null,
+      "--mongo_db": null,
+      "--name": null,
+      "--pdb": false,
+      "--print-config": false,
+      "--priority": null,
+      "--queue": false,
+      "--s3": null,
+      "--sql": null,
+      "--tiny_db": null,
+      "--unobserved": false,
+      "COMMAND": "gail",
+      "UPDATE": [
+        "pendulum",
+        "environment.fast",
+        "demonstrations.fast",
+        "policy_evaluation.fast",
+        "rl.fast",
+        "fast",
+        "demonstrations.path=quickstart/rl/rollouts/final.npz",
+        "demonstrations.source=local"
+      ],
+      "help": false,
+      "with": true
+    }
+  },
+  "resources": [],
+  "result": null,
+  "start_time": "2024-11-04T13:20:43.171702",
+  "status": "FAILED",
+  "stop_time": "2024-11-04T13:20:43.177088"
+}
