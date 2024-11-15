@@ -1,3 +1,0 @@
-Mon Nov  4 14:07:05 2024
-ERROR: could not create window
-

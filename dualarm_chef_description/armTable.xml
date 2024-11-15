@@ -1,0 +1,10 @@
+<mujoco model="Vention table">
+
+
+    <include file="assets/ventionTable/ventionTable_asset.xml"/>
+
+    <worldbody>
+        <include file="assets/ventionTable/ventionTable_body.xml"/>
+    </worldbody>
+
+</mujoco>
