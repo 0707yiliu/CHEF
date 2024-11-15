@@ -7,5 +7,5 @@ register(
 
 register(
     id="Chef-v0",
-    entry_point="gymnasium_envs.envs:ChefEnv",
+    entry_point="gymnasium_envs.envs:ChefEnv_v0",
 )
