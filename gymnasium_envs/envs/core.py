@@ -14,8 +14,14 @@ class MJRobot(ABC):
                  joint_index: np.ndarray,
                  joint_force: np.ndarray,
                  joint_list: list,
-                 sensor_list: list) -> None:
+                 sensor_list: list,
+                 ) -> None:
         self.sim = sim
+        self.action_space = action_space
+        self.joint_index = joint_index
+        self.joint_force = joint_force
+        self.joint_list = joint_list
+        self.sensor_list = sensor_list
 
     @abstractmethod
     def set_action(self, action: np.ndarray) -> None:
@@ -36,6 +42,9 @@ class MJRobot(ABC):
     def setup(self) -> None:
         """Called after robot loading."""
         pass
+
+    def get_body_position(self, body: str) -> np.ndarray:
+        return self.sim.get_body_position(body=body)
 
 class Task(ABC):
     def __init__(self,
@@ -67,6 +76,17 @@ class Task(ABC):
     ) -> Union[np.ndarray, float]:
         """Compute reward associated to the achieved and the desired goal."""
 
+    @abstractmethod
+    def get_desired_goal(self):
+        """return the current desired goal"""
+        if self.goal is None:
+            raise RuntimeError(("No goal yet, call reset() to select one task for getting goal"))
+        else:
+            return self.goal.cope()
+
+    def get_site_position(self, body: str) -> np.ndarray:
+        return self.sim.get_site_position(body=body)
+
 class RobotTaskEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"]}
     def __init__(self,
@@ -78,12 +98,26 @@ class RobotTaskEnv(gym.Env):
         self.robot = robot
         self.task = task
         self.render = render
-        print('here')
+        self.action_space = self.robot.action_space
+        self.observation_space = spaces.Box(-1, 1, shape=(2,), dtype=np.float32)
+        self._get_obs()
 
     def reset(self):
         pass
 
     def _get_obs(self):
+        # robot_obs = self.robot.get_obs()
+        # task_obs = self.task.get_obs()
+        # observation = np.concatenate([robot_obs, task_obs])
+        # current_state = self.task.get_achieved_goal()
+        # desired_state = self.task.get_desired_goal()
+        # self.observation_space = spaces.Dict(
+        #     {
+        #         "common_obs": spaces.Box(-1, 1, shape=observation.shape, dtype=np.float32),
+        #         'current_state': spaces.Box(-1, 1, shape=current_state.shape, dtype=np.float32),
+        #         'desired_state': spaces.Box(-1, 1, shape=desired_state.shape, dtype=np.float32),
+        #     }
+        # )
         pass
 
     def step(
