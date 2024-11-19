@@ -102,8 +102,8 @@ class RobotTaskEnv(gym.Env):
         self.observation_space = spaces.Box(-1, 1, shape=(2,), dtype=np.float32)
         self._get_obs()
 
-    def reset(self):
-        pass
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
 
     def _get_obs(self):
         # robot_obs = self.robot.get_obs()
