@@ -109,6 +109,11 @@
                   <geom material="linkgray" mesh="wrist3R" class="visual"/>
                   <geom class="eef_collision" pos="0 0.08 0" quat="1 1 0 0" size="0.04 0.02"/>
                   <site name="attachment_site" pos="0 0.1 0" quat="-1 1 0 0"/>
+                  <site name="R_ft_sensor" pos="0 0.1 0" rgba="1 0 0 0.3" size="0.1"/>
+                  <body name="REEF" pos="0 0.1 0">
+                    <inertial mass="0.1889" pos="0 0.0771683 0" quat="1 0 0 1"
+                      diaginertia="0.000132134 9.90863e-05 9.90863e-05"/>
+                  </body>
                 </body>
               </body>
             </body>
@@ -127,5 +132,11 @@
     <general class="size1" name="wrist_2" joint="wrist_2_jointR"/>
     <general class="size1" name="wrist_3" joint="wrist_3_jointR"/>
   </actuator>
+  
+  <sensor>
+  	<framepos objtype="site" objname="L_ft_sensor"/>
+  	<force name='Rforce' site='R_ft_sensor'/>
+  	<torque name='Rtorque' site='R_ft_sensor'/>
+  </sensor>
 
 </mujoco>

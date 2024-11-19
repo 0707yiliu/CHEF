@@ -1,6 +1,7 @@
 import time
 import mujoco
 import mujoco_viewer
+import mujoco.viewer
 import numpy as np
 from contextlib import contextmanager
 from typing import Any, Dict, Iterator, Optional
@@ -11,14 +12,21 @@ local_path = os.path.abspath('.') # get the run.py path (root path)
 class MJFunc:
     def __init__(self,
                  render: bool = True,
-                 xml_path: str = '/gymnasium_envs/dualarm_chef_description/scene.xml',
+                 xml_path: str = '/gymnasium_envs/dualarm_chef_description/scene_simple.xml',
                  ) -> None:
         self.xml_file = local_path + xml_path
         self.model = mujoco.MjModel.from_xml_path(self.xml_file)
         self.data = mujoco.MjData(self.model)
         self.render = render
         if self.render:
-            self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data)
+            # self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data) # package mujoco_viewer
+            self.viewer = mujoco.viewer.launch_passive(self.model, self.data) # raw mujoco viewer
+        # while True:
+        #     if self.render is True:
+        #         mujoco.mj_step(self.model, self.data)
+        #         # self.viewer.render()
+        #         # self.viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = int(self.data.time % 2)
+        #         self.viewer.sync()
 
     def reload_xml(self):
         pass
@@ -33,7 +41,7 @@ class MJFunc:
     def step(self):
         mujoco.mj_step(self.model, self.data)
         if self.render is True:
-            self.viewer.render()
+            self.viewer.sync()
 
     def get_body_position(self, body: str) -> np.ndarray:
         position = self.data.xpos[mujoco.mj_name2id(self.model, type=1, name=body)]
@@ -84,7 +92,13 @@ class MJFunc:
     def get_ft_sensor(self, force_site: str, torque_site: str) -> np.ndarray:
         force = self.data.sensor(force_site).data
         torque = self.data.sensor(torque_site).data
+        # mujoco.mj_contactForce()
         return np.hstack((force, torque))
+
+    def _get_ft_sensor(self):
+        for id, c in enumerate(self.data.contact):
+            # ft = mujoco.mj_contactForce(self.model, self.data, id, ft)
+            print(id)
 
     # def inverse_kinematics(self, current_joint: np.ndarray, target_position: np.ndarray,
     #                        target_orientation: np.ndarray) -> np.ndarray:

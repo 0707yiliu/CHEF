@@ -39,12 +39,16 @@ class MJRobot(ABC):
     @abstractmethod
     def reset(self) -> None:
         """Reset the robot and return the observation."""
+
     def setup(self) -> None:
         """Called after robot loading."""
         pass
 
     def get_body_position(self, body: str) -> np.ndarray:
         return self.sim.get_body_position(body=body)
+
+    def get_body_quaternion(self, body: str) -> np.ndarray:
+        return self.sim.get_body_quaternion(body=body)
 
 class Task(ABC):
     def __init__(self,
@@ -94,35 +98,57 @@ class RobotTaskEnv(gym.Env):
                  task: Task,
                  render: bool) -> None:
         assert robot.sim == task.sim, "The robot and the task must belong to the same simulation."
-        self.sim = robot.sim
         self.robot = robot
         self.task = task
         self.render = render
         self.action_space = self.robot.action_space
-        self.observation_space = spaces.Box(-1, 1, shape=(2,), dtype=np.float32)
-        self._get_obs()
+        self.observation_space = spaces.Dict(
+            {
+                "common_observation": spaces.Box(-1, 1, shape=(2,), dtype=np.float32),
+                "current_state": spaces.Box(-1, 1, shape=(2,), dtype=np.float32),
+                "desired_state": spaces.Box(-1, 1, shape=(2,), dtype=np.float32),
+            }
+        )
 
-    def reset(self, seed=None, options=None):
+    def reset(self, seed: Optional[int] = None, options={}):
         super().reset(seed=seed)
+        self.robot.reset()
+        self.task.reset()
+        self.robot.sim.set_forward()
+        return self._get_obs()
 
     def _get_obs(self):
-        # robot_obs = self.robot.get_obs()
+        robot_obs = self.robot.get_obs()
         # task_obs = self.task.get_obs()
         # observation = np.concatenate([robot_obs, task_obs])
         # current_state = self.task.get_achieved_goal()
         # desired_state = self.task.get_desired_goal()
-        # self.observation_space = spaces.Dict(
-        #     {
-        #         "common_obs": spaces.Box(-1, 1, shape=observation.shape, dtype=np.float32),
-        #         'current_state': spaces.Box(-1, 1, shape=current_state.shape, dtype=np.float32),
-        #         'desired_state': spaces.Box(-1, 1, shape=desired_state.shape, dtype=np.float32),
-        #     }
-        # )
-        pass
+        # return {
+        #     'common_observation': observation,
+        #     'current_state': current_state,
+        #     'desired_state': desired_state,
+        # }
+        return {
+            'common_observation': np.array([-1, -1]),
+            'current_state': np.array([-1, -1]),
+            'desired_state': np.array([-1, -1]),
+        } # for test
+
+    def _get_info(self):
+        return {
+            "distance": np.linalg.norm(
+                np.array([1,2,3]) - np.array([1,3,3]), ord=1
+            )
+        }
 
     def step(
         self, action: ActType
     ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
-        pass
+        self.robot.set_action(action)
+        obs = self._get_obs()
+        terminated = False
+        reward = 1 if terminated else 0
+        info = self._get_info()
+        return obs, reward, terminated, False, info
 
 

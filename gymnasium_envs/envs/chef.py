@@ -11,7 +11,7 @@ from gymnasium_envs.MJFunc import MJFunc
 
 class ChefEnv_v0(RobotTaskEnv):
     def __init__(self,
-                 render: bool = False,
+                 render: bool = True,
                  ):
 
         sim = MJFunc(

@@ -1,6 +1,6 @@
 <mujocoinclude>
 
     <body name="simpleMarbleTable" pos="0 0 0" >
-        <geom type="box" size=" 1.2 .385 .025" pos="0 0 0" mass="400"  material="ven_blue"/>
+        <geom type="box" size=" 1.2 .585 .025" pos="0 0 0" mass="400"  material="ven_blue"/>
     </body>
 </mujocoinclude>
