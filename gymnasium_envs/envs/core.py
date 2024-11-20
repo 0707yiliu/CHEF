@@ -44,12 +44,6 @@ class MJRobot(ABC):
         """Called after robot loading."""
         pass
 
-    def get_body_position(self, body: str) -> np.ndarray:
-        return self.sim.get_body_position(body=body)
-
-    def get_body_quaternion(self, body: str) -> np.ndarray:
-        return self.sim.get_body_quaternion(body=body)
-
 class Task(ABC):
     def __init__(self,
                  sim) -> None:
@@ -87,9 +81,6 @@ class Task(ABC):
             raise RuntimeError(("No goal yet, call reset() to select one task for getting goal"))
         else:
             return self.goal.cope()
-
-    def get_site_position(self, body: str) -> np.ndarray:
-        return self.sim.get_site_position(body=body)
 
 class RobotTaskEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"]}

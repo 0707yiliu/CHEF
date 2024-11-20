@@ -39,10 +39,10 @@ class dualUR5e(MJRobot):
         self.sim.step()
 
     def get_obs(self) -> np.ndarray:
-        L_ee_pos = np.copy(self.get_body_position(self.L_eef))
-        L_ee_qua = np.copy(self.get_body_quaternion(self.L_eef))
-        R_ee_pos = np.copy(self.get_body_position(self.R_eef))
-        R_ee_qua = np.copy(self.get_body_quaternion(self.R_eef))
+        L_ee_pos = np.copy(self.sim.get_body_position(self.L_eef))
+        L_ee_qua = np.copy(self.sim.get_body_quaternion(self.L_eef))
+        R_ee_pos = np.copy(self.sim.get_body_position(self.R_eef))
+        R_ee_qua = np.copy(self.sim.get_body_quaternion(self.R_eef))
         L_FT_sensor = self.sim.get_ft_sensor('Lforce', 'Ltorque')
         R_FT_sensor = self.sim.get_ft_sensor('Rforce', 'Rtorque')
         obs = np.concatenate([L_ee_pos, L_ee_qua, L_FT_sensor,

@@ -3,7 +3,7 @@
         <material name="ven_blue" rgba=".14 .30 .52 1" reflectance="10" shininess=".1"  /> 
     </asset>
     <worldbody>
-        <body pos="0 0.9 0.735">
+        <body name='obj_table' pos="0 0.9 0.735">
             <include file="assets/simpleTable/simpleMarbleTable_body.xml" />
         </body>
     </worldbody>
