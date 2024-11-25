@@ -12,7 +12,7 @@ with open('config/chef_v0.yml', 'r', encoding='utf-8') as cfg:
 
 env = gym.make(
     config['task_name'],
-    render=False,
+    render=True,
     xml_path=config['xml_path'],
     xml_file_name=config['xml_file_name'],
     basic_skills=config['basic_skill_name'],

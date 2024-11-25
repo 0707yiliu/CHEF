@@ -1,6 +1,5 @@
 import time
 import mujoco
-import mujoco_viewer
 import mujoco.viewer
 import numpy as np
 from contextlib import contextmanager
