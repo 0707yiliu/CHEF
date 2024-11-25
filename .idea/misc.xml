@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="chefbot" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="chefbot" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="chef" project-jdk-type="Python SDK" />
 </project>

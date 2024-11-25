@@ -1,2 +1,8 @@
 task_name: 'Chef-v0'
 render: True
+xml_path: '/gymnasium_envs/robot_env_description/'  # root of the xml file
+xml_file_name: 'scene_simple_single_arm.xml'  # xml file for training in mujoco
+basic_skill_name: ['reach', 'pick', 'release']  # basic skill, fixed
+specified_skill_name: ['flip']  # specified skills for cooking/kitchen
+demonstration_trajectories_paths: ''  # loading demonstration trajectory for different skills
+demonstration_length: 2000  # the length of the demonstration, uniformed

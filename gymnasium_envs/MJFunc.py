@@ -12,9 +12,10 @@ local_path = os.path.abspath('.') # get the run.py path (root path)
 class MJFunc:
     def __init__(self,
                  render: bool = True,
-                 xml_path: str = '/gymnasium_envs/dualarm_chef_description/scene_simple.xml',
+                 xml_path: str = '',
+                 xml_file_name: str = '',
                  ) -> None:
-        self.xml_file = local_path + xml_path
+        self.xml_file = local_path + xml_path + xml_file_name
         self.model = mujoco.MjModel.from_xml_path(self.xml_file)
         self.data = mujoco.MjData(self.model)
         self.render = render
