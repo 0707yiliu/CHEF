@@ -17,21 +17,24 @@
   
   <worldbody>
   <!--Grasped Object-->
-   <body name="rigid_cube" pos="0.1 0.62 1.2">
-      <freejoint/>
-      <inertial pos="0 0 0" mass="1" diaginertia="0.0102675 0.0102675 0.00666"/>
-      <geom type="box" size="0.03 0.03 0.03" rgba=".5 .7 .5 1" friction="1 1 1"/>
-   </body>
+      <body mocap='true' name="rigid_cube" pos="0.1 0.62 1.2">
+          <body name="rigid_cube_sub">
+              <freejoint/>
+              <inertial pos="0 0 0" mass="1" diaginertia="0.0102675 0.0102675 0.00666"/>
+              <geom type="box" size="0.03 0.03 0.03" rgba=".5 .7 .5 1" friction="1 1 1"/>
+          </body>
+      </body>
+
    
    <!--YCB bottle-->
-   <body name="ycb_bottle" pos="-0.1 0.62 1">
+   <body mocap='true' name="ycb_bottle" pos="-0.1 0.62 1">
      <freejoint/>
      <geom class="ycb_viz" mesh="006_mustard_bottle" pos="0 0 0" material="006_mustard_bottle"/>
      <geom class="ycb_col" type="mesh" mesh="006_mustard_bottle" pos="0 0 0" mass="0.431"/>
    </body>
    
    <!--Bowl-->
-   <body name="bowl" pos="-0.45 0.62 0.8">
+   <body mocap='true' name="bowl" pos="-0.45 0.62 0.8">
       <freejoint/>
       <inertial pos="0 0 0" mass="1.0" diaginertia="0.0102675 0.0102675 0.00666"/>
        <site name="bowlside" pos="0.12 0 0.05" rgba="1 0 0 0.3" size="0.01"/>
@@ -43,7 +46,7 @@
    </body>
    
    <!--fix area-->
-   <body name="fixedArea" pos="-0.95 0.62 0.8">
+   <body mocap='true' name="fixedArea" pos="-0.95 0.62 0.8">
       <geom type="box" size="0.2 0.2 0.02" friction="1 1 1"/>
       <geom type="box" size="0.015 0.2 0.05" pos="0.2 0 0.05" friction="1 1 1"/>
       <geom type="box" size="0.015 0.2 0.05" pos="-0.2 0 0.05" friction="1 1 1"/>

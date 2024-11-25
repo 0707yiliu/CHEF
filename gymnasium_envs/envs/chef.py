@@ -17,6 +17,8 @@ class ChefEnv_v0(RobotTaskEnv):
                  xml_file_name: str = '',
                  basic_skills: list = [],
                  specified_skills: list = [],
+                 kitchen_tasks_name: list = [],
+                 kitchen_tasks_chain: dict = {}
                  ):
 
         sim = MJFunc(
@@ -31,8 +33,10 @@ class ChefEnv_v0(RobotTaskEnv):
 
         task = KitchenMultiTask(
             sim=sim,
-            basic_skills=basic_skills, # the multi skills name for training
+            basic_skills=basic_skills,  # the multi skills name for training
             specified_skills=specified_skills,
+            kitchen_tasks_name=kitchen_tasks_name,
+            kitchen_tasks_chain=kitchen_tasks_chain,
         )
 
         super().__init__(
