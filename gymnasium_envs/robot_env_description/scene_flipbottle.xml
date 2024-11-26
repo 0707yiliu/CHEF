@@ -25,7 +25,6 @@
   <include file="ObjsTable.xml"/>
 
   <include file="armTable.xml"/> 
-  <include file="ur5e_schunk.xml"/>
-  <include file="objs2simpletask.xml"/>
+  <include file="ur5e_schunk_flip.xml"/>
   <!--<include file="press_flex.xml"/> -->
 </mujoco>
