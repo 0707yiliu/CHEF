@@ -95,12 +95,31 @@ class singleUR5e(MJRobot):
 
         return obs
 
-    def reset(self) -> None:
+    def reset(self, index, task_result) -> None:
         """
         reset the simulator first and reset the robot posture then
         Returns:
             None
         """
         self.sim.reset()
+        # hard code for different skill's environment
+        if index == 0:  # reach skill, init the robot to the fixed posture
+            self.sim.set_joint_angles()
+        elif index == 1:  # flip skill, use IK to generate one posture, fix the Z-rotation, face to the ground
+            goaled_qpos = self.sim.inverse_kinematics_kdl(current_joint=[0,1,2,3,4,5],
+                                                          target_position=task_result,
+                                                          target_orientation=task_result)
+            # TODO: change the current_joint to the init joint, the qpos will be changed by ik,
+            #       change the target orientation
+            self.sim.set_joint_angles(goaled_qpos)
 
+        elif index == 2:  # pouring cube, set the position of the end-effector upon the fixed area
+            target_goal = np.copy(task_result)
+            target_goal[-1] += 0.1
+            goaled_qpos = self.sim.inverse_kinematics_kdl(current_joint=[0, 1, 2, 3, 4, 5],
+                                                          target_position=task_result,
+                                                          target_orientation=task_result)
+            # TODO: change the current_joint to the init joint, the qpos will be changed by ik,
+            #       change the target orientation
+            self.sim.set_joint_angles(goaled_qpos)
 

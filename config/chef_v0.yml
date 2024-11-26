@@ -1,7 +1,7 @@
 task_name: 'Chef-v0'
 render: True
 xml_path: '/gymnasium_envs/robot_env_description/'  # root of the xml file
-xml_file_name: 'scene_simple_single_arm.xml'  # xml file for training in mujoco
+xml_file_name: 'scene_reach.xml'  # xml file for training in mujoco
 basic_skill_name: ['pick', 'release']  # basic skill, fixed
 specified_skill_name: ['reach', 'flip', 'pour']  # specified skills for cooking/kitchen
 kitchen_tasks_name: ['flip_bottle', 'pour_water', 'pick_cube']

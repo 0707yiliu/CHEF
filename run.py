@@ -21,5 +21,10 @@ env = gym.make(
     kitchen_tasks_chain=config['kitchen_tasks_chain'],
 )
 env.reset()
+t = 0
 while True:
     obs, reward, terminated, _, info = env.step(np.zeros(14))
+    t += 1
+    if t == 2000:
+        env.reset()
+        t = 0

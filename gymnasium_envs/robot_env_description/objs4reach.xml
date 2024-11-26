@@ -23,6 +23,7 @@
               <geom type="box" size="0.03 0.03 0.03" rgba=".5 .7 .5 1" friction="1 1 1"/>
           </body>
       </body>
+
   </worldbody>
 
 </mujoco>

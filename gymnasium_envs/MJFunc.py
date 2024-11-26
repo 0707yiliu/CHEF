@@ -6,7 +6,16 @@ from contextlib import contextmanager
 from typing import Any, Dict, Iterator, Optional
 import os
 
+import gymnasium_envs.KDLFunc as KDL_func
+
 local_path = os.path.abspath('.') # get the run.py path (root path)
+
+# rewrite xml
+try:
+    import xml.etree.cElementTree as ET
+except:
+    import xml.etree.ElementTree as ET
+
 
 class MJFunc:
     def __init__(self,
@@ -14,23 +23,34 @@ class MJFunc:
                  xml_path: str = '',
                  xml_file_name: str = '',
                  ) -> None:
-        self.xml_file = local_path + xml_path + xml_file_name
+        self.root_path = local_path + xml_path
+        self.xml_file = self.root_path + xml_file_name
         self.model = mujoco.MjModel.from_xml_path(self.xml_file)
         self.data = mujoco.MjData(self.model)
         self.render = render
         if self.render:
             # self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data) # package mujoco_viewer
             self.viewer = mujoco.viewer.launch_passive(self.model, self.data) # raw mujoco viewer
-        # while True:
+        # while True: # for testing mujoco render in python
         #     if self.render is True:
         #         mujoco.mj_step(self.model, self.data)
         #         # self.viewer.render()
         #         # self.viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = int(self.data.time % 2)
         #         self.viewer.sync()
 
-    def reload_xml(self):
-        pass
+        # hard code for urdf-kdl, can be embodied into yaml file
+        kdl_urdf_file = self.root_path + 'ur5e_schunk.urdf'
+        self.kdl_solver = KDL_func.arm_kdl(kdl_urdf_file)
 
+
+    def reload_xml(self, xml_file_name):
+        if self.render:
+            self.viewer.close()
+        new_xml = self.root_path + xml_file_name
+        self.model = mujoco.MjModel.from_xml_path(new_xml)
+        self.data = mujoco.MjData(self.model)
+        if self.render:
+            self.viewer = mujoco.viewer.launch_passive(self.model, self.data)
     @property
     def dt(self):
         pass
@@ -108,6 +128,17 @@ class MJFunc:
     # def forward_kinematics(self, qpos) -> np.ndarray:
     #     ee_pos = self.urxkdl.forward(qpos=qpos)
     #     return ee_pos
+
+    def inverse_kinematics_kdl(self,
+                               current_joint: np.ndarray,
+                               target_position: np.ndarray,
+                               target_orientation: np.ndarray) -> np.ndarray:
+        qpos = self.kdl_solver.inverse(current_joint, target_position, target_orientation)
+        return qpos
+
+    def forward_kinematics_kdl(self, qpos) -> np.ndarray:
+        ee_pos = self.kdl_solver.forward(qpos=qpos)
+        return ee_pos
 
     @contextmanager
     def no_rendering(self) -> Iterator[None]:
