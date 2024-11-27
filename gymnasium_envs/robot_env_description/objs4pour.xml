@@ -27,7 +27,7 @@
           </body>
       </body>
        <!--fix area-->
-      <body mocap='true' name="grab_obj" pos="-0.95 0.62 0.8">
+      <body mocap='true' name="grab_obj" pos="-0.5 0.62 0.8">
           <geom type="box" size="0.2 0.2 0.02" friction="1 1 1"/>
           <geom type="box" size="0.015 0.2 0.05" pos="0.2 0 0.05" friction="1 1 1"/>
           <geom type="box" size="0.015 0.2 0.05" pos="-0.2 0 0.05" friction="1 1 1"/>

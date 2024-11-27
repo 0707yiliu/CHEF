@@ -25,6 +25,6 @@ t = 0
 while True:
     obs, reward, terminated, _, info = env.step(np.zeros(14))
     t += 1
-    if t == 2000:
+    if t == 1500:
         env.reset()
         t = 0

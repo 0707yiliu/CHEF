@@ -22,7 +22,7 @@ class arm_kdl():
         f_pos = np.zeros(3)
         for i in range(3):
             f_pos[i] = pos.p[i]
-        return f_pos
+        return f_pos, kdl.Rotation(pos.M).GetQuaternion()
 
     def inverse(self, init_joint, goal_pose, goal_rot):
         try:

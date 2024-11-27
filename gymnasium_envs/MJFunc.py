@@ -30,7 +30,7 @@ class MJFunc:
         self.render = render
         if self.render:
             # self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data) # package mujoco_viewer
-            self.viewer = mujoco.viewer.launch_passive(self.model, self.data) # raw mujoco viewer
+            self.viewer = mujoco.viewer.launch_passive(self.model, self.data, show_left_ui=False, show_right_ui=False) # raw mujoco viewer
         # while True: # for testing mujoco render in python
         #     if self.render is True:
         #         mujoco.mj_step(self.model, self.data)
@@ -50,7 +50,7 @@ class MJFunc:
         self.model = mujoco.MjModel.from_xml_path(new_xml)
         self.data = mujoco.MjData(self.model)
         if self.render:
-            self.viewer = mujoco.viewer.launch_passive(self.model, self.data)
+            self.viewer = mujoco.viewer.launch_passive(self.model, self.data, show_left_ui=False, show_right_ui=False)
     @property
     def dt(self):
         pass
@@ -87,13 +87,16 @@ class MJFunc:
     def get_site_mat(self, site: str) -> np.ndarray:
         return self.data.site_xmat[mujoco.mj_name2id(self.model, type=6, name=site)]
 
-    def set_joint_angles(self, angles: np.ndarray) -> None:
-        for i in range(len(angles)):
-            self.data.qpos[i] = angles[i]
+    def set_joint_qpos(self, joint_list, angles):
+        assert len(joint_list) == len(angles)
+        for i in range(len(joint_list)):
+            self.data.joint(joint_list[i]).qpos = angles[i]
         mujoco.mj_forward(self.model, self.data)
 
+
     def set_mocap_pos(self, mocap: str, pos: np.ndarray) -> None:
-        self.data.mocap_pos[0] = pos  # TODO:the id is not defined in mujoco, you should design a search method
+        mocap_id = self.model.body_mocapid[self.data.body(mocap).id]
+        self.data.mocap_pos[mocap_id] = pos  # TODO:the id is not defined in mujoco, you should design a search method
         # self.data.mocap_pos[mujoco.mj_name2id()]
 
     def set_mocap_quat(self, mocap: str, quat: np.ndarray) -> None:
@@ -137,8 +140,8 @@ class MJFunc:
         return qpos
 
     def forward_kinematics_kdl(self, qpos) -> np.ndarray:
-        ee_pos = self.kdl_solver.forward(qpos=qpos)
-        return ee_pos
+        ee_pos, ee_qua = self.kdl_solver.forward(qpos=qpos)
+        return ee_pos, ee_qua
 
     @contextmanager
     def no_rendering(self) -> Iterator[None]:

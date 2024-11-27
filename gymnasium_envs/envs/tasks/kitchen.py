@@ -27,7 +27,7 @@ class KitchenMultiTask(Task):
         self.target_task_chain = []
 
         # training skills, switch number
-        self.curr_skill = self.specified_skills[np.random.randint(0, 3)]
+        self.curr_skill = self.specified_skills[0]
         self.last_skill = self.curr_skill
 
         #  the goal of the target task
@@ -90,12 +90,16 @@ class KitchenMultiTask(Task):
         # reloading mj xml file
         # chose new env
         self.curr_skill = self.specified_skills[skill_index]
+        # print(self.curr_skill, self.last_skill)
         if self.curr_skill == self.last_skill:
             # if the curr skill same as the last skill, pass and reset the env, reload the xml otherwise
             pass
         else:
             self.sim.reload_xml('scene_' + self.curr_skill + '.xml')
-        self.goal = circle_sample(-0.5, 0.62, 0.72, 1, 1.4)
+            self.last_skill = self.curr_skill
+        self.sim.reset() # reset first and set goal and state then, goal sample from the circle
+        self.goal = circle_sample(-0.5, 0, 0.72, 0.82, 1, 1.4)
+        # print(self.goal)
         # hard code for different skills' environment
         if skill_index == 0:
             self.sim.set_mocap_pos(mocap='grab_obj', pos=self.goal)
@@ -104,6 +108,7 @@ class KitchenMultiTask(Task):
             cube_pos[-1] += 0.14
             self.sim.set_mocap_pos(mocap='grab_obj', pos=self.goal)
             self.sim.set_mocap_pos(mocap='pourcube', pos=cube_pos)
+
         return self.goal
 
         # """

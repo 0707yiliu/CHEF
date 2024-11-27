@@ -108,7 +108,6 @@ class RobotTaskEnv(gym.Env):
         reset_skill_num = np.random.randint(0, 3)
         task_result = self.task.reset(reset_skill_num)
         self.robot.reset(reset_skill_num, task_result)
-        self.robot.sim.set_forward()
         return self._get_obs()
 
     def _get_obs(self):
