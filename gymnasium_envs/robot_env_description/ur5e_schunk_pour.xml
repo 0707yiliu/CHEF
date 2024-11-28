@@ -161,7 +161,7 @@
     <general class="size1L" name="wrist_1L" joint="wrist_1_jointL"/>
     <general class="size1L" name="wrist_2L" joint="wrist_2_jointL"/>
     <general class="size1L" name="wrist_3L" joint="wrist_3_jointL"/>
-    <general class="finger" name="fingers" joint="finger_joint1"/>
+    <general class="finger" name="fingersL" joint="finger_joint1"/>
   </actuator>
   
   <sensor>

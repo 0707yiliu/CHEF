@@ -4,6 +4,7 @@ from gymnasium_envs.envs.core import MJRobot
 from gymnasium import spaces
 
 from gymnasium_envs.utils import circle_sample
+from scipy.spatial.transform import Rotation
 
 class dualUR5e(MJRobot):
     def __init__(self,
@@ -82,27 +83,61 @@ class singleUR5e(MJRobot):
             action_space=action_space,
             joint_index=np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]),
             joint_force=np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]),
+            init_qpos=np.deg2rad([0, 0, 90, -90, -90, 0]),
             joint_list=["shoulder_pan_jointL", "shoulder_lift_jointL", "elbow_jointL", "wrist_1_jointL", "wrist_2_jointL", "wrist_3_jointL", "finger_joint1"],
+            actuator_list=['shoulder_panL', 'shoulder_liftL', 'elbowL', 'wrist_1L', 'wrist_2L', 'wrist_3L', 'fingersL'],
             sensor_list=['magnetic_1', 'magnetic_2', 'magnetic_3', 'magnetic_4']
         )
 
 
     def set_action(self, action: np.ndarray) -> None:
         self.sim.step()
-        # ---KDL Test (work)---
+        # # ---KDL Test---
         # test_angle_zero = np.zeros(6)
-        # # test_angle = [0.32350003, 0.62122977, 0.9344792, 2.95638272, -0.12349997, -2.61809169]
-        # test_angle = [0.3235, 0.7235,0.2235,0.4235,0.1235,0.5235]
-        # self.sim.set_joint_qpos(self.joint_list[:-1], test_angle)
+        # test_angle = np.deg2rad([45, 45, 45, 45, 45, 45])
+        # # test_angle = [0, 0, 0, 0, 0, -1.57]
+        # # test_angle = [0.3235, 0.7235,0.2235,0.4235,0.1235,0.5235]
+        # self.sim.set_joint_qpos(self.joint_list[:-1], self.init_qpos)
         # qpos = np.array(test_angle)
         # # print(np.array([self.sim.get_joint_angle(joint=self.joint_list[i]) for i in range(7)]))
         # if self.env_index == 1:
         #     base = self.sim.get_body_position('baseL')
         #     sim_pos = self.sim.get_body_position('grab_obj')
         #     sim_qua = np.roll(self.sim.get_body_quaternion('grab_obj'), -1)
-        #     kdl_pos, kdl_qua = self.sim.forward_kinematics_kdl(qpos)
-        #     q_inv = self.sim.inverse_kinematics_kdl(test_angle_zero, sim_pos - base,
-        #                                              sim_qua)
+        #     sim_qua_test = [0.3535534, 0, 0.7071068, 0.6123724]
+        #     kdl_pos, kdl_qua = self.sim.forward_kinematics_kdl(self.init_qpos)
+        #     print(kdl_qua, Rotation.from_quat(kdl_qua).as_euler('xyz', degrees=True))
+        #     q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, sim_pos - base,
+        #                                             sim_qua)
+        #     print(q_inv)
+        #
+        #     # curr_joint_qpos = np.zeros(6)
+        #     # target_pos, target_quat = sim_pos, sim_qua
+        #     # start_pos, start_quat = self.sim.forward_kinematics_kdl(self.init_qpos)
+        #     # start_pos += base
+        #     # print(start_pos, start_quat)
+        #     # target_euler = Rotation.from_quat(target_quat).as_euler('xyz', degrees=False)
+        #     # start_euler = Rotation.from_quat(start_quat).as_euler('xyz', degrees=False)
+        #     # traj_num = 10
+        #     # traj_pos, traj_euler = np.zeros((3, traj_num)), np.zeros((3, traj_num))
+        #     # for i in range(3):
+        #     #     if target_pos[i] >= start_pos[i]:
+        #     #         traj_pos[i, :] = np.linspace(start_pos[i], target_pos[i], traj_num)
+        #     #         traj_euler[i, :] = np.linspace(start_euler[i], target_euler[i], traj_num)
+        #     #     else:
+        #     #         traj_pos[i, :] = np.linspace(target_pos[i], start_pos[i], traj_num)[::-1]
+        #     #         traj_euler[i, :] = np.linspace(target_euler[i], start_euler[i], traj_num)[::-1]
+        #     #
+        #     # q_inv = self.init_qpos
+        #     # for i in range(traj_num):
+        #     #     traj_quat = Rotation.from_euler('xyz', traj_euler[:, i], degrees=False).as_quat()
+        #     #     q_inv = self.sim.inverse_kinematics_kdl(q_inv, traj_pos[:, i] - base,
+        #     #                                             traj_quat)
+        #     #     # print(q_inv)
+        #     #     # print(traj_pos[:, i], traj_quat, start_pos, start_quat)
+        #     #     # print('---------')
+        #     #     # input()
+        #
         #     print('-------------', '\n',
         #         'sim pos:', sim_pos, '\n',
         #         'sim qua:', sim_qua, '\n',
@@ -110,7 +145,8 @@ class singleUR5e(MJRobot):
         #         'kdl qua:', kdl_qua, '\n',
         #         'kdl q inv:', q_inv,
         #     )
-        # ---------------------
+        #     input()
+        # # ---------------------
 
 
     def get_obs(self) -> np.ndarray:
@@ -121,36 +157,76 @@ class singleUR5e(MJRobot):
 
         return obs
 
-    def reset(self, index, task_result) -> None:
+    def reset(self, index, target_goal) -> bool:
         """
         reset the simulator first and reset the robot posture then
         Returns:
             None
         """
         self.env_index = index
-
-
-
+        self.sim.set_forward()
+        _reset_goal = False
         # hard code for different skill's environment
-        # if index == 0:  # reach skill, init the robot to the fixed posture
-        #     self.sim.set_joint_angles()
-        # elif index == 1:  # flip skill, use IK to generate one posture, fix the Z-rotation, face to the ground
-        #     goaled_qpos = self.sim.inverse_kinematics_kdl(current_joint=[0,1,2,3,4,5],
-        #                                                   target_position=task_result,
-        #                                                   target_orientation=task_result)
-        #     # TODO: change the current_joint to the init joint, the qpos will be changed by ik,
-        #     #       change the target orientation
-        #     self.sim.set_joint_angles(goaled_qpos)
-        #
-        # elif index == 2:  # pouring cube, set the position of the end-effector upon the fixed area
-        #     target_goal = np.copy(task_result)
-        #     target_goal[-1] += 0.1
-        #     goaled_qpos = self.sim.inverse_kinematics_kdl(current_joint=[0, 1, 2, 3, 4, 5],
-        #                                                   target_position=task_result,
-        #                                                   target_orientation=task_result)
-        #     # TODO: change the current_joint to the init joint, the qpos will be changed by ik,
-        #     #       change the target orientation
-        #     self.sim.set_joint_angles(goaled_qpos)
+        if self.env_index == 0: # reach skill,
+            qpos_random = np.deg2rad(np.random.uniform(-np.ones(6) * 45, np.ones(6) * 45))
+            self.sim.set_joint_qpos(self.joint_list[:-1], qpos_random) # set the joint randomly
+            self.sim.control_joints(self.actuator_list[:-1], qpos_random)
+        elif self.env_index == 1: # flip skill, use IK to generate one posture, fix the Z-rotation face to the ground
+            base = self.sim.get_body_position('baseL')
+            ee_noise = np.random.uniform(np.ones(3) * -0.02, np.ones(3) * 0.02)
+            sim_euler = np.random.uniform(np.deg2rad([-10, -10, 0]), np.deg2rad([10, 10, 180]))
+            sim_quat = Rotation.from_euler('xyz', sim_euler, degrees=False).as_quat()  # rotation convertor
+            q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, target_goal - base + ee_noise, sim_quat)
+            inv_done = False
+            sample_times = 0
+            while inv_done is False:
+                if q_inv.max() > np.pi or q_inv.min() < -np.pi:
+                    sample_times += 1
+                    sim_euler = np.random.uniform(np.deg2rad([-10, -10, 0]), np.deg2rad([10, 10, 180]))
+                    sim_quat = Rotation.from_euler('xyz', sim_euler, degrees=False).as_quat()  # rotation convertor
+                    q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, target_goal - base + ee_noise, sim_quat)
+                    if sample_times > 500:
+                        _reset_goal = True
+                        # print(target_goal)
+                        print('break')
+                        break
+                else:
+                    inv_done = True
+                    # print(q_inv, sim_euler, target_goal - base)
+                    self.sim.set_joint_qpos(self.joint_list[:-1], q_inv)
+                    self.sim.control_joints(self.actuator_list[:-1], q_inv)
+        elif self.env_index == 2:  # pouring skill, set the position of the ee upon the round of fixed area
+            base = self.sim.get_body_position('baseL')
+            ee_noise = np.random.uniform(np.ones(3) * -0.02, np.ones(3) * 0.02)
+            sim_euler = np.random.uniform(np.deg2rad([-95, -30, -30]), np.deg2rad([-85, 30, 30]))
+            sim_quat = Rotation.from_euler('xyz', sim_euler, degrees=False).as_quat()  # rotation convertor
+            target_goal[-1] += 0.25
+            q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, target_goal - base + ee_noise, sim_quat)
+            inv_done = False
+            sample_times = 0
+            while inv_done is False:
+                if q_inv.max() > np.pi or q_inv.min() < -np.pi:
+                    sim_euler = np.random.uniform(np.deg2rad([-95, 0, 0]), np.deg2rad([-85, 10, 10]))
+                    sim_quat = Rotation.from_euler('xyz', sim_euler, degrees=False).as_quat()  # rotation convertor
+                    q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, target_goal - base + ee_noise, sim_quat)
+                    # print('change')
+                    sample_times += 1
+                    if sample_times > 500:
+                        _reset_goal = True
+                        # print(target_goal)
+                        print('break')
+                        break
+                else:
+                    inv_done = True
+                    # print(q_inv, sim_euler, target_goal - base)
+                    self.sim.set_joint_qpos(self.joint_list[:-1], q_inv)
+                    self.sim.control_joints(self.actuator_list[:-1], q_inv)
+                    self.sim.set_forward()
+                    cube_pos = self.sim.get_body_position('bowl')
+                    cube_pos[-1] += 0.1
+                    self.sim.set_mocap_pos(mocap='pourcube', pos=cube_pos)
+
 
         self.sim.set_forward()
+        return _reset_goal
 

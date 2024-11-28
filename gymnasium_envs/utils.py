@@ -13,10 +13,11 @@ def circle_sample(center_x, center_y, diameter_in, diameter_out, thickness_low, 
         3-dim sample point
     """
     # generate diameter and circle shape like [dia, circle-shape] for x and y
-    x_y_dia_circle = np.random.uniform([0, diameter_in], [2 * np.pi, diameter_out])
+    x_y_dia_circle = np.random.uniform([0, diameter_in], [np.pi, diameter_out])
 
     x = center_x + x_y_dia_circle[1] * np.cos(x_y_dia_circle[0])
     y = center_y + x_y_dia_circle[1] * np.sin(x_y_dia_circle[0])
     z = np.random.uniform(thickness_low, thicness_high)
 
     return np.array([x, y, z])
+

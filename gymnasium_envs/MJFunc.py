@@ -7,6 +7,7 @@ from typing import Any, Dict, Iterator, Optional
 import os
 
 import gymnasium_envs.KDLFunc as KDL_func
+from ur_ikfast import ur_kinematics
 
 local_path = os.path.abspath('.') # get the run.py path (root path)
 
@@ -41,6 +42,8 @@ class MJFunc:
         # hard code for urdf-kdl, can be embodied into yaml file
         kdl_urdf_file = self.root_path + 'ur5e_schunk.urdf'
         self.kdl_solver = KDL_func.arm_kdl(kdl_urdf_file)
+        # hard code for ikfast
+        self.ur5e_arm = ur_kinematics.URKinematics('ur5e')
 
 
     def reload_xml(self, xml_file_name):
@@ -102,9 +105,13 @@ class MJFunc:
     def set_mocap_quat(self, mocap: str, quat: np.ndarray) -> None:
         self.data.mocap_quat[0] = quat  # TODO: the same problem like set_mocap_pos func
 
-    def control_joints(self, target_angles: np.ndarray) -> None:
+    def control_joints(self, actuator_list, target_angles) -> None:
+        assert len(actuator_list) == len(target_angles)
+        ids = []
+        for i in range(len(actuator_list)):
+            ids.append(mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, actuator_list[i]))
         for i in range(len(target_angles)):
-            self.data.ctrl[i] = target_angles[i]
+            self.data.ctrl[ids[i]] = target_angles[i]
 
     def set_forward(self) -> None:
         mujoco.mj_forward(self.model, self.data)
@@ -142,6 +149,16 @@ class MJFunc:
     def forward_kinematics_kdl(self, qpos) -> np.ndarray:
         ee_pos, ee_qua = self.kdl_solver.forward(qpos=qpos)
         return ee_pos, ee_qua
+
+    def inverse_kinematics_ikfast(self, target_position, target_orientation):
+        pose_quat = np.concatenate([target_position, target_orientation])
+        q_inv = self.ur5e_arm.inverse(pose_quat)
+        return q_inv
+
+    def forward_kinematics_ikfast(self, qpos):
+        pose_quat = self.ur5e_arm.forward(qpos)
+        return pose_quat[:3], pose_quat[3:]
+
 
     @contextmanager
     def no_rendering(self) -> Iterator[None]:

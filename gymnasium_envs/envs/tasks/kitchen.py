@@ -98,16 +98,16 @@ class KitchenMultiTask(Task):
             self.sim.reload_xml('scene_' + self.curr_skill + '.xml')
             self.last_skill = self.curr_skill
         self.sim.reset() # reset first and set goal and state then, goal sample from the circle
-        self.goal = circle_sample(-0.5, 0, 0.72, 0.82, 1, 1.4)
+        self.goal = circle_sample(-0.5, 0, 0.5, 0.55, 1.0, 1.1)
         # print(self.goal)
         # hard code for different skills' environment
-        if skill_index == 0:
+        if skill_index == 0 or skill_index == 2:
             self.sim.set_mocap_pos(mocap='grab_obj', pos=self.goal)
-        if skill_index == 2:
-            cube_pos = np.copy(self.goal)
-            cube_pos[-1] += 0.14
-            self.sim.set_mocap_pos(mocap='grab_obj', pos=self.goal)
-            self.sim.set_mocap_pos(mocap='pourcube', pos=cube_pos)
+        # if skill_index == 2:
+        #     cube_pos = np.copy(self.goal)
+        #     cube_pos[-1] += 0.35
+        #     self.sim.set_mocap_pos(mocap='grab_obj', pos=self.goal)
+        #     self.sim.set_mocap_pos(mocap='pourcube', pos=cube_pos)
 
         return self.goal
 

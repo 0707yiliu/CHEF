@@ -13,10 +13,15 @@ class MJRobot(ABC):
                  action_space: spaces.Space,
                  joint_index: np.ndarray,
                  joint_force: np.ndarray,
+                 init_qpos: np.ndarray,
                  joint_list: list,
+                 actuator_list: list,
                  sensor_list: list,
                  ) -> None:
         self.sim = sim
+
+        self.init_qpos = init_qpos
+        self.actuator_list = actuator_list
         self.action_space = action_space
         self.joint_index = joint_index
         self.joint_force = joint_force
@@ -37,7 +42,7 @@ class MJRobot(ABC):
             np.ndarray: The observation.
         """
     @abstractmethod
-    def reset(self, env_index, task_result) -> None:
+    def reset(self, env_index, task_result):
         """Reset the robot and return the observation."""
 
     def setup(self) -> None:
@@ -103,11 +108,14 @@ class RobotTaskEnv(gym.Env):
 
     def reset(self, seed: Optional[int] = None, options={}):
         super().reset(seed=seed)
+        _reset_goal = True
         # reset the env first, because the robot with different skill need to be reset to different state
         # the mujoco reset would be used in robot.reset()
-        reset_skill_num = np.random.randint(0, 3)
-        task_result = self.task.reset(reset_skill_num)
-        self.robot.reset(reset_skill_num, task_result)
+        # reset_skill_num = np.random.randint(0, 3)
+        reset_skill_num = 2
+        while _reset_goal is True:
+            task_result = self.task.reset(reset_skill_num)
+            _reset_goal = self.robot.reset(reset_skill_num, task_result)
         return self._get_obs()
 
     def _get_obs(self):
