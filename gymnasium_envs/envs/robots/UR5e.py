@@ -225,8 +225,6 @@ class singleUR5e(MJRobot):
                     cube_pos = self.sim.get_body_position('bowl')
                     cube_pos[-1] += 0.1
                     self.sim.set_mocap_pos(mocap='pourcube', pos=cube_pos)
-
-
         self.sim.set_forward()
         return _reset_goal
 

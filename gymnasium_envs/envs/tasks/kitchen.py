@@ -5,7 +5,7 @@ import numpy as np
 from gymnasium_envs.envs.core import Task
 
 from gymnasium_envs.utils import circle_sample
-
+from scipy.spatial.transform import Rotation
 
 class KitchenMultiTask(Task):
     def __init__(self,
