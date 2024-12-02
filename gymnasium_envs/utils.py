@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def circle_sample(center_x, center_y, diameter_in, diameter_out, thickness_low, thicness_high):
     """
     create the circle shape range for target point sampling for robot
@@ -21,3 +22,12 @@ def circle_sample(center_x, center_y, diameter_in, diameter_out, thickness_low, 
 
     return np.array([x, y, z])
 
+
+def _normalization(data, _max, _min):
+    if type(data) is not type(np.array([])):
+        data = np.array(data)
+    if type(_max) is not type(np.array([])):
+        _max = np.array(_max)
+        _min = np.array(_min)
+    _range = _max - _min
+    return (data - _min) / _range

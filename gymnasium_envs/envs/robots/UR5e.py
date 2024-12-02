@@ -3,7 +3,7 @@ import math
 from gymnasium_envs.envs.core import MJRobot
 from gymnasium import spaces
 
-from gymnasium_envs.utils import circle_sample
+from gymnasium_envs.utils import _normalization
 from scipy.spatial.transform import Rotation
 
 class dualUR5e(MJRobot):
@@ -44,13 +44,13 @@ class dualUR5e(MJRobot):
 
     def get_obs(self) -> np.ndarray:
         L_ee_pos = np.copy(self.sim.get_body_position(self.L_eef))
-        L_ee_qua = np.copy(self.sim.get_body_quaternion(self.L_eef))
+        L_ee_quat = np.copy(self.sim.get_body_quaternion(self.L_eef))
         R_ee_pos = np.copy(self.sim.get_body_position(self.R_eef))
-        R_ee_qua = np.copy(self.sim.get_body_quaternion(self.R_eef))
+        R_ee_quat = np.copy(self.sim.get_body_quaternion(self.R_eef))
         L_FT_sensor = self.sim.get_ft_sensor('Lforce', 'Ltorque')
         R_FT_sensor = self.sim.get_ft_sensor('Rforce', 'Rtorque')
-        obs = np.concatenate([L_ee_pos, L_ee_qua, L_FT_sensor,
-                              R_ee_pos, R_ee_qua, R_FT_sensor])
+        obs = np.concatenate([L_ee_pos, L_ee_quat, L_FT_sensor,
+                              R_ee_pos, R_ee_quat, R_FT_sensor])
 
         return obs
 
@@ -77,6 +77,8 @@ class singleUR5e(MJRobot):
         # specified site in simulation
         self.L_eef = 'LEEF'
         self.env_index = -1
+        self.arm_ee_max_pos = np.array([-0.5 + 0.85, 0.85, 0.816 + 1.1])
+        self.arm_ee_min_pos = np.array([-0.5 - 0.85, -0.85, 0.816])
 
         super().__init__(
             sim,
@@ -151,10 +153,14 @@ class singleUR5e(MJRobot):
 
     def get_obs(self) -> np.ndarray:
         L_ee_pos = np.copy(self.sim.get_body_position(self.L_eef))
-        L_ee_qua = np.copy(self.sim.get_body_quaternion(self.L_eef))
+        norm_L_ee_pos = _normalization(L_ee_pos, self.arm_ee_max_pos, self.arm_ee_min_pos)
+        L_ee_quat = np.copy(self.sim.get_body_quaternion(self.L_eef))
+        norm_L_ee_quat = _normalization(L_ee_quat, 1, -1)  # hard code for normalization of quaternion
+        L_ee_vels = np.copy(self.sim.get_body_velocity(self.L_eef))
+        norm_L_ee_vels = _normalization(L_ee_vels, 1, -1)  # hard code for normalization of velocity
         L_FT_sensor = self.sim.get_ft_sensor('Lforce', 'Ltorque')
-        obs = np.concatenate([L_ee_pos, L_ee_qua, L_FT_sensor,])
-
+        norm_L_FT_snesor = _normalization(L_FT_sensor, 10, -10)  # hard code for normalization of FT sensor
+        obs = np.concatenate([norm_L_ee_pos, norm_L_ee_quat, norm_L_ee_vels, norm_L_FT_snesor,])
         return obs
 
     def reset(self, index, target_goal) -> bool:
@@ -198,9 +204,9 @@ class singleUR5e(MJRobot):
         elif self.env_index == 2:  # pouring skill, set the position of the ee upon the round of fixed area
             base = self.sim.get_body_position('baseL')
             ee_noise = np.random.uniform(np.ones(3) * -0.02, np.ones(3) * 0.02)
-            sim_euler = np.random.uniform(np.deg2rad([-95, -30, -30]), np.deg2rad([-85, 30, 30]))
+            sim_euler = np.random.uniform(np.deg2rad([-95, -10, -180]), np.deg2rad([-75, 10, 180]))
             sim_quat = Rotation.from_euler('xyz', sim_euler, degrees=False).as_quat()  # rotation convertor
-            target_goal[-1] += 0.25
+            target_goal[-1] += 0.35
             q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, target_goal - base + ee_noise, sim_quat)
             inv_done = False
             sample_times = 0

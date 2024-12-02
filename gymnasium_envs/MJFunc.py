@@ -9,6 +9,8 @@ import os
 import gymnasium_envs.KDLFunc as KDL_func
 from ur_ikfast import ur_kinematics
 
+from scipy.spatial.transform import Rotation
+
 local_path = os.path.abspath('.') # get the run.py path (root path)
 
 # rewrite xml
@@ -86,6 +88,11 @@ class MJFunc:
 
     def get_site_position(self, site: str) -> np.ndarray:
         return self.data.site_xpos[mujoco.mj_name2id(self.model, type=6, name=site)]
+
+    def get_site_quaternion(self, site: str) -> np.ndarray:
+        mat = self.data.site_xmat[mujoco.mj_name2id(self.model, type=6, name=site)]
+        quat = Rotation.from_quat(mat.reshape((3, 3))).as_quat()
+        return quat
 
     def get_site_mat(self, site: str) -> np.ndarray:
         return self.data.site_xmat[mujoco.mj_name2id(self.model, type=6, name=site)]

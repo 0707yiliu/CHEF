@@ -79,13 +79,12 @@ class Task(ABC):
     ) -> Union[np.ndarray, float]:
         """Compute reward associated to the achieved and the desired goal."""
 
-    @abstractmethod
     def get_desired_goal(self):
         """return the current desired goal"""
         if self.goal is None:
             raise RuntimeError(("No goal yet, call reset() to select one task for getting goal"))
         else:
-            return self.goal.cope()
+            return self.goal.copy()
 
 class RobotTaskEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"]}
@@ -98,11 +97,15 @@ class RobotTaskEnv(gym.Env):
         self.task = task
         self.render = render
         self.action_space = self.robot.action_space
+        obs = self._get_obs()
+        _common_obs_shape = obs['common_observation'].shape[0]
+        _current_state_shape = obs['current_state'].shape[0]
+        _desired_state_shape = obs['desired_state'].shape[0]
         self.observation_space = spaces.Dict(
             {
-                "common_observation": spaces.Box(-1, 1, shape=(2,), dtype=np.float32),
-                "current_state": spaces.Box(-1, 1, shape=(2,), dtype=np.float32),
-                "desired_state": spaces.Box(-1, 1, shape=(2,), dtype=np.float32),
+                "common_observation": spaces.Box(0, 1, shape=(_common_obs_shape,), dtype=np.float32),
+                "current_state": spaces.Box(0, 1, shape=(_current_state_shape,), dtype=np.float32),
+                "desired_state": spaces.Box(0, 1, shape=(_desired_state_shape,), dtype=np.float32),
             }
         )
 
@@ -111,8 +114,8 @@ class RobotTaskEnv(gym.Env):
         _reset_goal = True
         # reset the env first, because the robot with different skill need to be reset to different state
         # the mujoco reset would be used in robot.reset()
-        # reset_skill_num = np.random.randint(0, 3)
-        reset_skill_num = 2
+        reset_skill_num = np.random.randint(0, 3)
+        # reset_skill_num = 2  # for debug the reset of each environment
         while _reset_goal is True:
             task_result = self.task.reset(reset_skill_num)
             _reset_goal = self.robot.reset(reset_skill_num, task_result)
@@ -122,18 +125,18 @@ class RobotTaskEnv(gym.Env):
         robot_obs = self.robot.get_obs()
         task_obs = self.task.get_obs()
         observation = np.concatenate([robot_obs, task_obs])
-        # current_state = self.task.get_achieved_goal()
-        # desired_state = self.task.get_desired_goal()
-        # return {
-        #     'common_observation': observation,
-        #     'current_state': current_state,
-        #     'desired_state': desired_state,
-        # }
+        current_state = self.task.get_achieved_goal()
+        desired_state = self.task.get_desired_goal()
         return {
-            'common_observation': np.array([-1, -1]),
-            'current_state': np.array([-1, -1]),
-            'desired_state': np.array([-1, -1]),
-        } # for test
+            'common_observation': observation,
+            'current_state': current_state,
+            'desired_state': desired_state,
+        }
+        # return {
+        #     'common_observation': np.array([-1, -1]),
+        #     'current_state': np.array([-1, -1]),
+        #     'desired_state': np.array([-1, -1]),
+        # } # !for test
 
     def _get_info(self):
         return {

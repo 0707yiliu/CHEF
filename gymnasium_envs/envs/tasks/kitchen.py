@@ -4,7 +4,7 @@ import numpy as np
 
 from gymnasium_envs.envs.core import Task
 
-from gymnasium_envs.utils import circle_sample
+from gymnasium_envs.utils import circle_sample, _normalization
 from scipy.spatial.transform import Rotation
 
 class KitchenMultiTask(Task):
@@ -31,7 +31,9 @@ class KitchenMultiTask(Task):
         self.last_skill = self.curr_skill
 
         #  the goal of the target task
-        # self.goal = self._sample_goal()
+        self.goal = self._sample_goal()
+        self.reset_goal_max_pos = [-0.49 + 0.56, 0.56, 1.01]  # hard code the reset goal, related to the circle_sample func
+        self.reset_goal_min_pos = [-0.49 + 0.51, 0.51, 0.89]
 
         # Observation in Task (define in mujoco xml file)
         self.table_base_handle = 'obj_table'  # table base Z position
@@ -50,7 +52,7 @@ class KitchenMultiTask(Task):
     def _sample_goal(self) -> np.ndarray:
         """TODO: the goal need to be defined by the task/skill (one goal state + current demonstration state)"""
 
-        goal = np.random.uniform(-1, 1)
+        goal = circle_sample(-0.5, 0, 0.5, 0.55, 0.9, 1.0)
         return goal
 
     def compute_reward(
@@ -60,22 +62,34 @@ class KitchenMultiTask(Task):
 
     def get_achieved_goal(self) -> np.ndarray:
         """
-        For the dual arm case, the achieved goal means the EEF pos in bi-manual hand
+        For the dual arm case, the achieved goal means the EEF pos of bi-manual hand
+        For the single arm case, the achieved goal means the EEF pos of hand
         Returns: the position and orientation of two hands
 
         """
-        return np.array(self.sim.get_site_position('obj'))
+        site_pos = self.sim.get_site_position('attachment_siteL')
+        # site_quat = self.sim.get_site_quaternion('attachment_siteL')
+        # return np.concatenate([site_pos, site_quat]) # single arm
+        return site_pos  # single arm
 
     def get_obs(self) -> np.ndarray:
-        table_base_z = self.sim.get_body_position(self.table_base_handle)[-1]  # just need the height of the table
-        grasped_object_pos = self.sim.get_body_position(self.target_grasped_obj_handle)
-        grasped_object_qua = self.sim.get_body_quaternion(self.target_grasped_obj_handle)
-        bottle_pos = self.sim.get_body_position(self.bottle_handle)
-        bottle_qua = self.sim.get_body_quaternion(self.bottle_handle)
-        bowl_center_pos = self.sim.get_body_position(self.bowl_center_handle)
-        bowl_side_pos = self.sim.get_site_position(self.bowl_side_handle)
-        fixed_area_pos = self.sim.get_body_position(self.fixed_area_handle)
-        return np.array([])
+        # table_base_z = self.sim.get_body_position(self.table_base_handle)[-1]  # just need the height of the table
+        # grasped_object_pos = self.sim.get_body_position(self.target_grasped_obj_handle)
+        # grasped_object_qua = self.sim.get_body_quaternion(self.target_grasped_obj_handle)
+        # bottle_pos = self.sim.get_body_position(self.bottle_handle)
+        # bottle_qua = self.sim.get_body_quaternion(self.bottle_handle)
+        # bowl_center_pos = self.sim.get_body_position(self.bowl_center_handle)
+        # bowl_side_pos = self.sim.get_site_position(self.bowl_side_handle)
+        # fixed_area_pos = self.sim.get_body_position(self.fixed_area_handle)
+
+        #  !the skill imitation by RL. Obs space in env contains one target for unified perspectives
+        target_body_name = 'grab_obj'
+        target_goal_pos = self.sim.get_body_position(target_body_name)
+        norm_target_goal_pos = _normalization(target_goal_pos, self.reset_goal_max_pos, self.reset_goal_min_pos)
+        target_goal_quat = self.sim.get_body_quaternion(target_body_name)
+        norm_target_goal_quat = _normalization(target_goal_quat, 1, -1)
+        obs = np.concatenate([norm_target_goal_pos, norm_target_goal_quat])
+        return obs
 
     def is_success(
             self, achieved_goal: np.ndarray, desired_goal: np.ndarray, info: Dict[str, Any] = {}
@@ -98,12 +112,12 @@ class KitchenMultiTask(Task):
             self.sim.reload_xml('scene_' + self.curr_skill + '.xml')
             self.last_skill = self.curr_skill
         self.sim.reset() # reset first and set goal and state then, goal sample from the circle
-        self.goal = circle_sample(-0.5, 0, 0.5, 0.55, 1.0, 1.1)
+        self.goal = circle_sample(-0.5, 0, 0.5, 0.55, 0.9, 1.0)
         # print(self.goal)
         # hard code for different skills' environment
         if skill_index == 0 or skill_index == 2:
             self.sim.set_mocap_pos(mocap='grab_obj', pos=self.goal)
-        # if skill_index == 2:
+        # if skill_index == 2: !the pour cube in 2-env would be changed in robot config
         #     cube_pos = np.copy(self.goal)
         #     cube_pos[-1] += 0.35
         #     self.sim.set_mocap_pos(mocap='grab_obj', pos=self.goal)
@@ -130,6 +144,3 @@ class KitchenMultiTask(Task):
         #     bottle_pos[i] = np.random.uniform(self.bottle_pos_range[i, 0], self.bottle_pos_range[i, 1])
         # if self.target_task == 'pour':
         #     print('----------------')
-
-    def get_desired_goal(self):
-        pass
