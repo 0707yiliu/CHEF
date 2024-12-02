@@ -74,9 +74,7 @@ class Task(ABC):
         """Returns whether the achieved goal match the desired goal."""
 
     @abstractmethod
-    def compute_reward(
-            self, achieved_goal: np.ndarray, desired_goal: np.ndarray, info: Dict[str, Any] = {}
-    ) -> Union[np.ndarray, float]:
+    def compute_reward(self) -> Union[np.ndarray, float]:
         """Compute reward associated to the achieved and the desired goal."""
 
     def get_desired_goal(self):

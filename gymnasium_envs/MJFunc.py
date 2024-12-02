@@ -33,7 +33,15 @@ class MJFunc:
         self.render = render
         if self.render:
             # self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data) # package mujoco_viewer
+            self.viewer_distance = 1.5  # set the sight posture
+            self.viewer_azimuth = 270
+            self.viewer_elevation = -45
+            self.viewer_lookat = np.array([0, 1.3, 1.9])
             self.viewer = mujoco.viewer.launch_passive(self.model, self.data, show_left_ui=False, show_right_ui=False) # raw mujoco viewer
+            self.viewer.cam.distance = self.viewer_distance
+            self.viewer.cam.azimuth = self.viewer_azimuth
+            self.viewer.cam.elevation = self.viewer_elevation
+            self.viewer.cam.lookat[:] = self.viewer_lookat
         # while True: # for testing mujoco render in python
         #     if self.render is True:
         #         mujoco.mj_step(self.model, self.data)
@@ -56,6 +64,10 @@ class MJFunc:
         self.data = mujoco.MjData(self.model)
         if self.render:
             self.viewer = mujoco.viewer.launch_passive(self.model, self.data, show_left_ui=False, show_right_ui=False)
+            self.viewer.cam.distance = self.viewer_distance
+            self.viewer.cam.azimuth = self.viewer_azimuth
+            self.viewer.cam.elevation = self.viewer_elevation
+            self.viewer.cam.lookat[:] = self.viewer_lookat
     @property
     def dt(self):
         pass

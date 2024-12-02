@@ -206,7 +206,7 @@ class singleUR5e(MJRobot):
             ee_noise = np.random.uniform(np.ones(3) * -0.02, np.ones(3) * 0.02)
             sim_euler = np.random.uniform(np.deg2rad([-95, -10, -180]), np.deg2rad([-75, 10, 180]))
             sim_quat = Rotation.from_euler('xyz', sim_euler, degrees=False).as_quat()  # rotation convertor
-            target_goal[-1] += 0.35
+            target_goal[-1] += 0.3
             q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, target_goal - base + ee_noise, sim_quat)
             inv_done = False
             sample_times = 0

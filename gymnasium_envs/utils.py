@@ -31,3 +31,6 @@ def _normalization(data, _max, _min):
         _min = np.array(_min)
     _range = _max - _min
     return (data - _min) / _range
+
+def euclidean_distance(a, b):
+    return np.linalg.norm(a - b)

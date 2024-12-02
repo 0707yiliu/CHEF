@@ -4,7 +4,7 @@ import numpy as np
 
 from gymnasium_envs.envs.core import Task
 
-from gymnasium_envs.utils import circle_sample, _normalization
+from gymnasium_envs.utils import circle_sample, _normalization, euclidean_distance
 from scipy.spatial.transform import Rotation
 
 class KitchenMultiTask(Task):
@@ -32,8 +32,8 @@ class KitchenMultiTask(Task):
 
         #  the goal of the target task
         self.goal = self._sample_goal()
-        self.reset_goal_max_pos = [-0.49 + 0.56, 0.56, 1.01]  # hard code the reset goal, related to the circle_sample func
-        self.reset_goal_min_pos = [-0.49 + 0.51, 0.51, 0.89]
+        self.reset_goal_max_pos = [-0.49 + 0.56, 0.56, 1.11]  # hard code the reset goal, related to the circle_sample func
+        self.reset_goal_min_pos = [-0.49 + 0.51, 0.51, 1.04]
 
         # Observation in Task (define in mujoco xml file)
         self.table_base_handle = 'obj_table'  # table base Z position
@@ -52,13 +52,29 @@ class KitchenMultiTask(Task):
     def _sample_goal(self) -> np.ndarray:
         """TODO: the goal need to be defined by the task/skill (one goal state + current demonstration state)"""
 
-        goal = circle_sample(-0.5, 0, 0.5, 0.55, 0.9, 1.0)
+        goal = circle_sample(-0.5, 0, 0.5, 0.55, 1.05, 1.1)
         return goal
 
-    def compute_reward(
-            self, achieved_goal: np.ndarray, desired_goal: np.ndarray, info: Dict[str, Any] = {}
-    ) -> Union[np.ndarray, float]:
-        pass
+    def compute_reward(self) -> Union[np.ndarray, float]:
+        """
+        compute the reward for environment, distance for example
+        For different task/skill, the unified reward type would be used:
+            Trajectory's distance + Goal distance
+            (because we do not know the goal distance for different skill, we get the input directly rather function)
+        Returns:
+            Float type distance for goal task
+        """
+        if self.curr_skill is self.specified_skills[2]:  # pour skill, calculate the distance between cube and the area
+            cube_pos = self.sim.get_body_position('pourcube')
+            rew = euclidean_distance(self.goal, cube_pos)
+        else:  # flip and reach skill, calculate the distance between EEF site and target goal, contain rotation
+            ee_site_pos = self.sim.get_site_position('attachment_siteL')
+            pos_dis = euclidean_distance(self.goal, ee_site_pos)
+            # TODO: add rotation, for reach and flip has only one desired rotation posture
+            #  flip make x y zero, z 180, reach make x y zero, z 90
+            rew = pos_dis
+
+        return rew
 
     def get_achieved_goal(self) -> np.ndarray:
         """
@@ -112,7 +128,7 @@ class KitchenMultiTask(Task):
             self.sim.reload_xml('scene_' + self.curr_skill + '.xml')
             self.last_skill = self.curr_skill
         self.sim.reset() # reset first and set goal and state then, goal sample from the circle
-        self.goal = circle_sample(-0.5, 0, 0.5, 0.55, 0.9, 1.0)
+        self.goal = circle_sample(-0.5, 0, 0.5, 0.55, 1.05, 1.1)
         # print(self.goal)
         # hard code for different skills' environment
         if skill_index == 0 or skill_index == 2:
