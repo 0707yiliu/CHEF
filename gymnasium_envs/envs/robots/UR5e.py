@@ -85,7 +85,7 @@ class singleUR5e(MJRobot):
             action_space=action_space,
             joint_index=np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]),
             joint_force=np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]),
-            init_qpos=np.deg2rad([0, 0, 90, -90, -90, 0]),
+            init_qpos=np.deg2rad([0, -90, 90, -90, -90, 0]),
             joint_list=["shoulder_pan_jointL", "shoulder_lift_jointL", "elbow_jointL", "wrist_1_jointL", "wrist_2_jointL", "wrist_3_jointL", "finger_joint1"],
             actuator_list=['shoulder_panL', 'shoulder_liftL', 'elbowL', 'wrist_1L', 'wrist_2L', 'wrist_3L', 'fingersL'],
             sensor_list=['magnetic_1', 'magnetic_2', 'magnetic_3', 'magnetic_4']
@@ -94,6 +94,9 @@ class singleUR5e(MJRobot):
 
     def set_action(self, action: np.ndarray) -> None:
         self.sim.step()
+        # zeros_angle = [0, 0, 0, 0, 0, 0]
+        # self.sim.set_joint_qpos(self.joint_list[:-1], self.init_qpos)
+        # print(self.sim.get_body_position(self.L_eef) - self.sim.get_body_position('baseL'))
         # # ---KDL Test---
         # test_angle_zero = np.zeros(6)
         # test_angle = np.deg2rad([45, 45, 45, 45, 45, 45])
@@ -174,13 +177,15 @@ class singleUR5e(MJRobot):
         _reset_goal = False
         # hard code for different skill's environment
         if self.env_index == 0: # reach skill,
-            qpos_random = np.deg2rad(np.random.uniform(-np.ones(6) * 45, np.ones(6) * 45))
+            qpos_random = np.deg2rad(np.random.uniform(-np.ones(6) * 60, np.ones(6) * 60))
+            qpos_random[0] = np.deg2rad(np.random.uniform(-180, 180))
+            qpos_random[1] -= 1.57
             self.sim.set_joint_qpos(self.joint_list[:-1], qpos_random) # set the joint randomly
             self.sim.control_joints(self.actuator_list[:-1], qpos_random)
         elif self.env_index == 1: # flip skill, use IK to generate one posture, fix the Z-rotation face to the ground
             base = self.sim.get_body_position('baseL')
             ee_noise = np.random.uniform(np.ones(3) * -0.02, np.ones(3) * 0.02)
-            sim_euler = np.random.uniform(np.deg2rad([-10, -10, 0]), np.deg2rad([10, 10, 180]))
+            sim_euler = np.random.uniform(np.deg2rad([-10, -10, -180]), np.deg2rad([10, 10, 180]))
             sim_quat = Rotation.from_euler('xyz', sim_euler, degrees=False).as_quat()  # rotation convertor
             q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, target_goal - base + ee_noise, sim_quat)
             inv_done = False
@@ -188,7 +193,7 @@ class singleUR5e(MJRobot):
             while inv_done is False:
                 if q_inv.max() > np.pi or q_inv.min() < -np.pi:
                     sample_times += 1
-                    sim_euler = np.random.uniform(np.deg2rad([-10, -10, 0]), np.deg2rad([10, 10, 180]))
+                    sim_euler = np.random.uniform(np.deg2rad([-10, -10, -180]), np.deg2rad([10, 10, 180]))
                     sim_quat = Rotation.from_euler('xyz', sim_euler, degrees=False).as_quat()  # rotation convertor
                     q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, target_goal - base + ee_noise, sim_quat)
                     if sample_times > 500:
@@ -204,7 +209,7 @@ class singleUR5e(MJRobot):
         elif self.env_index == 2:  # pouring skill, set the position of the ee upon the round of fixed area
             base = self.sim.get_body_position('baseL')
             ee_noise = np.random.uniform(np.ones(3) * -0.02, np.ones(3) * 0.02)
-            sim_euler = np.random.uniform(np.deg2rad([-95, -10, -180]), np.deg2rad([-75, 10, 180]))
+            sim_euler = np.random.uniform(np.deg2rad([-90, -5, -180]), np.deg2rad([-80, 5, 180]))
             sim_quat = Rotation.from_euler('xyz', sim_euler, degrees=False).as_quat()  # rotation convertor
             target_goal[-1] += 0.3
             q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, target_goal - base + ee_noise, sim_quat)
@@ -212,7 +217,8 @@ class singleUR5e(MJRobot):
             sample_times = 0
             while inv_done is False:
                 if q_inv.max() > np.pi or q_inv.min() < -np.pi:
-                    sim_euler = np.random.uniform(np.deg2rad([-95, 0, 0]), np.deg2rad([-85, 10, 10]))
+                    sim_euler = np.random.uniform(np.deg2rad([-90, -5, -180]), np.deg2rad([-80, 5, 180]))
+                    # sim_euler = np.random.uniform(np.deg2rad([-95, 0, 0]), np.deg2rad([-85, 10, 10]))
                     sim_quat = Rotation.from_euler('xyz', sim_euler, degrees=False).as_quat()  # rotation convertor
                     q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, target_goal - base + ee_noise, sim_quat)
                     # print('change')

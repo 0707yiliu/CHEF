@@ -4,4 +4,7 @@
     <option name="sdkName" value="chefbot" />
   </component>
   <component name="ProjectRootManager" version="2" project-jdk-name="chefbot" project-jdk-type="Python SDK" />
+  <component name="PyCharmProfessionalAdvertiser">
+    <option name="shown" value="true" />
+  </component>
 </project>

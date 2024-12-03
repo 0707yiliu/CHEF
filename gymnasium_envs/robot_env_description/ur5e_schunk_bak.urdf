@@ -5,7 +5,7 @@
   <joint name="shoulder_pan_joint" type="revolute">
     <parent link="base_link"/>
     <child link="shoulder_link"/>
-    <origin rpy="0.0 0.0 3.1415926" xyz="0.0 0.0 0.163"/>
+    <origin rpy="0.0 0.0 1.5707963" xyz="0.0 0.0 0.163"/>
     <axis xyz="0 0 1"/>
   </joint>
   <link name="shoulder_link">
@@ -13,7 +13,7 @@
   <joint name="shoulder_lift_joint" type="revolute">
     <parent link="shoulder_link"/>
     <child link="upper_arm_link"/>
-    <origin rpy="0.0 1.5707963 0.0" xyz="0.0 0.138 0.0"/>
+    <origin rpy="0.0 0 0.0" xyz="0.0 0.138 0.0"/>
     <axis xyz="0 1 0"/>
   </joint>
   <link name="upper_arm_link">

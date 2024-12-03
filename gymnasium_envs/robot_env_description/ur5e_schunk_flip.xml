@@ -73,7 +73,7 @@
   </asset>
 
   <worldbody>
-    <body name="baseL" pos="-0.5 0 0.816" quat="1 0 0 1" childclass="ur5eL">
+    <body name="baseL" pos="-0.5 0 0.816" quat="0 0 0 1" childclass="ur5eL">
       <inertial mass="4.0" pos="0 0 0" diaginertia="0.00443333156 0.00443333156 0.0072"/>
       <geom mesh="base_0L" material="blackL" class="visualL"/>
       <geom mesh="base_1L" material="jointgrayL" class="visualL"/>
@@ -84,7 +84,7 @@
         <geom mesh="shoulder_1L" material="blackL" class="visualL"/>
         <geom mesh="shoulder_2L" material="jointgrayL" class="visualL"/>
         <geom class="collisionL" size="0.06 0.06" pos="0 0 -0.04"/>
-        <body name="upper_arm_linkL" pos="0 0.138 0" quat="1 0 0 0">
+        <body name="upper_arm_linkL" pos="0 0.138 0" quat="1 0 1 0">
           <inertial mass="8.393" pos="0 0 0.2125" diaginertia="0.133886 0.133886 0.0151074"/>
           <joint name="shoulder_lift_jointL" class="size3L"/>
           <geom mesh="upperarm_0L" material="linkgrayL" class="visualL"/>
