@@ -1,7 +1,8 @@
 import time
 
 import numpy as np
-
+import matplotlib.pyplot as plt
+from scipy.spatial.transform import Rotation
 
 def circle_sample(center_x, center_y, diameter_in, diameter_out, thickness_low, thicness_high):
     """
@@ -33,6 +34,7 @@ def _normalization(data, _max, _min):
         _min = np.array(_min)
     _range = _max - _min
     return (data - _min) / _range
+
 
 def euclidean_distance(a, b):
     return np.linalg.norm(a - b)
@@ -189,12 +191,91 @@ def load_single_discrete_pkl(root_path, pkl_root_name):
     # plt.show()
     # # --------------------------------
 
+def interp_preprocessed_data_with_vel(data_path, ex_length=2000, hz=50):
+    """
+    data extender and generate velocity
+    Args:
+        data_path: datasets path
+
+    Returns:
+        interped data
+
+    """
+    data = np.load(data_path)
+    # print('load_preprocesseddata_with_vel func:', data.files, data['eefpos'].shape)
+    eepos = data['eefpos']
+    eeeuler = Rotation.from_quat(data['eefquat']).as_euler('xyz', degrees=False)
+    forcetorque = data['eefft']
+    # plt.subplot(131)
+    # plt.plot(eepos[:, 0])
+    # plt.plot(eeeuler[:, 0])
+    # plt.subplot(132)
+    # plt.plot(eepos[:, 1])
+    # plt.plot(eeeuler[:, 1])
+    # plt.subplot(133)
+    # plt.plot(eepos[:, 2])
+    # plt.plot(eeeuler[:, 2])
+    # plt.show()
+    hz = hz
+    extender_length = ex_length
+    raw_len = eepos.shape[0]
+    ratio = extender_length / raw_len
+    pos_vel = np.empty([0, 3])
+    rot_vel = np.empty([0, 3])
+    for i in range(data['eefpos'].shape[0]-1):
+        _pos_vel = (eepos[i+1] - eepos[i]) * hz
+        _rot_vel = (eeeuler[i + 1] - eeeuler[i]) * hz
+        pos_vel = np.append(pos_vel, [_pos_vel], axis=0)
+        rot_vel = np.append(rot_vel, [_rot_vel], axis=0)
+    pos_vel = np.append(pos_vel, [[0, 0 ,0]], axis=0) # the end is zero
+    rot_vel = np.append(rot_vel, [[0, 0, 0]], axis=0) # the end is zero
+
+    raw_data_len = eepos.shape[0]
+    raw_t = np.linspace(0, raw_data_len-1, raw_data_len)
+    ex_t = np.linspace(0, raw_data_len-1, extender_length)
+    ex_eepos = np.zeros((extender_length, 3))
+    ex_eeposvel = np.zeros_like(ex_eepos)
+    ex_eerot = np.zeros_like(ex_eepos)
+    # ex_eequat = np.zeros((extender_length, 4)) # quaternion
+    ex_eerotvel = np.zeros_like(ex_eepos)
+    ex_forcetorque = np.zeros((extender_length, 6))
+    for i in range(3):
+        ex_eepos[:, i] = np.interp(ex_t, raw_t, eepos[:, i])
+        ex_eerot[:, i] = np.interp(ex_t, raw_t, eeeuler[:, i])
+        ex_eeposvel[:, i] = np.interp(ex_t, raw_t, pos_vel[:, i]) / ratio
+        ex_eerotvel[:, i] = np.interp(ex_t, raw_t, rot_vel[:, i]) / ratio
+    for i in range(6):
+        ex_forcetorque[:, i] = np.interp(ex_t, raw_t, forcetorque[:, i])
+    ex_eequat = Rotation.from_euler('xyz', ex_eerot, degrees=False).as_quat()
+
+    # plt.subplot(131)
+    # plt.plot(pos_vel[:, 0])
+    # plt.plot(rot_vel[:, 0])
+    # plt.subplot(132)
+    # plt.plot(pos_vel[:, 1])
+    # plt.plot(rot_vel[:, 1])
+    # plt.subplot(133)
+    # plt.plot(pos_vel[:, 2])
+    # plt.plot(rot_vel[:, 2])
+    # plt.show()
+
+    return ex_eepos, ex_eequat, ex_eeposvel, ex_eerotvel, ex_forcetorque
+
 
 
 
 if __name__ == "__main__":
-    root_path = "/home/yi/robotic_manipulation/demonstration_datasets/chef_skills/pour/"
-    file_name = "1203_122009" # get the data one by one
+    print('main')
+    # ## pre process the demostration trajectory --------
+    # root_path = "/home/yi/robotic_manipulation/demonstration_datasets/chef_skills/pour/"
+    # file_name = "1203_122009" # get the data one by one
+    #
+    # load_single_discrete_pkl(root_path, file_name)
+    # # ---------------------
 
-    load_single_discrete_pkl(root_path, file_name)
+    ## --------------precessed data load and get vel and interp ----------
+    path = './datasets/reach/'
+    filename = '20241204105546.npz'
+    interp_preprocessed_data_with_vel(path + filename)
+    ## -------------------------
 
