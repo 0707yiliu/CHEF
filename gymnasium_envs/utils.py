@@ -92,27 +92,72 @@ def load_single_discrete_pkl(root_path, pkl_root_name):
         ee_pos_kdl = np.append(ee_pos_kdl, [eepos], axis=0)
         ee_quat_kdl = np.append(ee_quat_kdl, [eequat], axis=0)
     print('ee pos length:', len(ee_pos_kdl))
-    ee_pos_kdl = ee_pos_kdl[750:, :] # TODO !!!!! important to divide data for trajectory
+    start = 0
+    end = -100
+    ee_pos_kdl = ee_pos_kdl[start:end, :] # TODO !!!!! important to divide data for trajectory
+    ee_quat_kdl = ee_quat_kdl[start:end, :]
+    force_torque = force_torque[start:end, :]
+    qpos = qpos[start:end, :]
+
+    # ee_pos_kdl = np.flipud(ee_pos_kdl)
+    # ee_quat_kdl = np.flipud(ee_quat_kdl)
+    # force_torque = np.flipud(force_torque)
+    # qpos = np.flipud(qpos)
 
     # import matplotlib.pyplot as plt
     #
     # # -------- EEF tcp pos rotvec plot -----
-    import open3d
-    import cv2
-    pcd = open3d.geometry.PointCloud()
-    pcd.points = open3d.utility.Vector3dVector(ee_pos_kdl)
-    colors = []
-    for i in range(len(ee_pos_kdl)):
-        color = cv2.applyColorMap(np.array(i / len(ee_pos_kdl) * 255, dtype=np.uint8), cv2.COLORMAP_CIVIDIS)
-        colors.append(color[0][0] / 255)
-
-    pcd.colors = open3d.utility.Vector3dVector(colors)
-
-    # add a coordinate frame of the robot
-    frame = open3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=[0, 0, 0])
-
-    open3d.visualization.draw_geometries([pcd, frame])
+    # import open3d
+    # import cv2
+    # pcd = open3d.geometry.PointCloud()
+    # pcd.points = open3d.utility.Vector3dVector(ee_pos_kdl)
+    # colors = []
+    # for i in range(len(ee_pos_kdl)):
+    #     color = cv2.applyColorMap(np.array(i / len(ee_pos_kdl) * 255, dtype=np.uint8), cv2.COLORMAP_CIVIDIS)
+    #     colors.append(color[0][0] / 255)
+    #
+    # pcd.colors = open3d.utility.Vector3dVector(colors)
+    #
+    # # add a coordinate frame of the robot
+    # frame = open3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=[0, 0, 0])
+    #
+    # open3d.visualization.draw_geometries([pcd, frame])
     # # ----------------------------------------
+    # input()
+    import mujoco
+    import mujoco.viewer
+    import time
+    root_path = 'robot_env_description/scene_pour.xml'
+    model = mujoco.MjModel.from_xml_path(root_path)
+    data = mujoco.MjData(model)
+    viewer_distance = 1.5  # set the sight posture
+    viewer_azimuth = 270
+    viewer_elevation = -45
+    viewer_lookat = np.array([0, 1.3, 1.9])
+    viewer = mujoco.viewer.launch_passive(model, data, show_left_ui=False,
+                                               show_right_ui=False)  # raw mujoco viewer
+    viewer.cam.distance = viewer_distance
+    viewer.cam.azimuth = viewer_azimuth
+    viewer.cam.elevation = viewer_elevation
+    viewer.cam.lookat[:] = viewer_lookat
+    joint_list = ["shoulder_pan_jointL", "shoulder_lift_jointL", "elbow_jointL", "wrist_1_jointL", "wrist_2_jointL", "wrist_3_jointL", "finger_joint1"]
+    for i in range(6):
+        data.joint(joint_list[i]).qpos = qpos[0, i]
+    mujoco.mj_forward(model, data)
+    mujoco.mj_step(model, data)
+    viewer.sync()
+    time.sleep(0.1)
+    for j in range(ee_pos_kdl.shape[0]):
+        angles = qpos[j, :-1]
+        # print(angles)
+        for i in range(len(joint_list[:-1])):
+            data.ctrl[i] = angles[i]
+        mujoco.mj_forward(model, data)
+        mujoco.mj_step(model, data)
+        viewer.sync()
+        time.sleep(0.01)
+    print('done')
+    ## ---------record processed data -----------
     input()
     '''
     saving processed data
@@ -122,12 +167,10 @@ def load_single_discrete_pkl(root_path, pkl_root_name):
     currenttime = int(time.time())
     currenttime = time.strftime("%Y%m%d%H%M%S", time.localtime(currenttime))
     print(currenttime)
-    np.savez('./datasets/reach/' + currenttime,
+    np.savez('./datasets/pour/' + currenttime,
              eefpos=ee_pos_kdl,
              eefquat=ee_quat_kdl,
              eefft=force_torque)
-
-
 
     # # -------- F/T sensor plot -----
     # ft_wrench = []
@@ -150,9 +193,8 @@ def load_single_discrete_pkl(root_path, pkl_root_name):
 
 
 if __name__ == "__main__":
-    root_path = "/home/yi/robotic_manipulation/demonstration_datasets/chef_skills/reach/"
-    file_name = "1203_114756" # get the data one by one
-    # 114756 is done ///!!!!!!!!!!!
+    root_path = "/home/yi/robotic_manipulation/demonstration_datasets/chef_skills/pour/"
+    file_name = "1203_122009" # get the data one by one
 
     load_single_discrete_pkl(root_path, file_name)
 

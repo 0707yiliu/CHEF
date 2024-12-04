@@ -22,8 +22,9 @@
     <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
   </worldbody>
 
-  <include file="armTable.xml"/> 
+  <include file="armTable.xml"/>
   <include file="ur5e_schunk_pour.xml"/>
   <include file="objs4pour.xml"/>
+<!--  <include file="objs4pour_utils.xml"/>-->
   <!--<include file="press_flex.xml"/> -->
 </mujoco>

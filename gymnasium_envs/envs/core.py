@@ -113,7 +113,7 @@ class RobotTaskEnv(gym.Env):
         # reset the env first, because the robot with different skill need to be reset to different state
         # the mujoco reset would be used in robot.reset()
         reset_skill_num = np.random.randint(0, 3)
-        reset_skill_num = 2  # for debug the reset of each environment
+        # reset_skill_num = 2  # for debug the reset of each environment
         while _reset_goal is True:
             task_result = self.task.reset(reset_skill_num)
             _reset_goal = self.robot.reset(reset_skill_num, task_result)

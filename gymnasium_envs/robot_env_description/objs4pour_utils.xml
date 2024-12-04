@@ -1,0 +1,42 @@
+<mujoco model="Objs">
+  <asset>
+    <mesh name="006_mustard_bottle" file="../assets/meshes/006_mustard_bottle.msh" scale="1 1 1"/>
+    <texture name="006_mustard_bottle" type="2d" file="assets/textures/006_mustard_bottle.png"/>
+    <material name="006_mustard_bottle" texture="006_mustard_bottle"/>
+    
+  </asset>
+  
+  <default>
+    <default class="ycb_col">
+	<geom contype="1" conaffinity="1" group="3" rgba=".4 .5 .6 1"/>
+    </default>
+    <default class="ycb_viz">
+	<geom contype="0" conaffinity="0" type="mesh" mass="0"/>
+    </default>
+  </default>
+  
+  <worldbody>
+  <!--Grasped Object-->
+      <body mocap='true' name="pourcube" pos="0.1 0.62 1.2">
+          <body name="rigid_cube">
+              <joint armature="0" axis="1 0 0" damping="0" limited="true" name="box_1_x" pos="0 0 0" range="-5. 5." stiffness="0" type="slide"/>
+              <joint armature="0" axis="0 1 0" damping="0" limited="true" name="box_1_y" pos="0 0 0" range="-5. 5." stiffness="0" type="slide"/>
+              <joint armature="0" axis="0 0 1" damping="0" limited="true" name="box_1_z" pos="0 0 0" range="-2. 2." stiffness="0" type="slide"/>
+              <joint armature="0" damping="0" name="box_1_rot" pos="0 0 0" stiffness="0" type="ball"/>
+              <geom type="box" size="0.03 0.03 0.03" rgba=".5 .7 .5 1" friction="1 1 1"/>
+          </body>
+      </body>
+       <!--fix area-->
+      <body mocap='true' name="grab_obj" pos="-0.5 0.62 0.8">
+          <geom type="box" size="0.2 0.2 0.02" friction="1 1 1"/>
+          <geom type="box" size="0.015 0.2 0.05" pos="0.2 0 0.05" friction="1 1 1"/>
+          <geom type="box" size="0.015 0.2 0.05" pos="-0.2 0 0.05" friction="1 1 1"/>
+          <geom type="box" size="0.2 0.015 0.05" pos="0 -0.2 0.05" friction="1 1 1"/>
+          <geom type="box" size="0.2 0.015 0.05" pos="0 0.2 0.05" friction="1 1 1"/>
+      </body>
+  </worldbody>
+
+</mujoco>
+
+
+
