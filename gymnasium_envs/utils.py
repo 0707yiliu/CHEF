@@ -35,6 +35,16 @@ def _normalization(data, _max, _min):
     _range = _max - _min
     return (data - _min) / _range
 
+def _inv_normalization(data, _range, _min):
+    if type(data) is not type(np.array([])):
+        data = np.array(data)
+    if type(_range) is not type(np.array([])):
+        _range = np.array(_range)
+    if type(_min) is not type(np.array([])):
+        _min = np.array(_min)
+    raw_data = data * _range + _min
+    return raw_data
+
 
 def euclidean_distance(a, b):
     return np.linalg.norm(a - b)
@@ -259,7 +269,8 @@ def interp_preprocessed_data_with_vel(data_path, ex_length=2000, hz=50):
     # plt.plot(rot_vel[:, 2])
     # plt.show()
 
-    return ex_eepos, ex_eequat, ex_eeposvel, ex_eerotvel, ex_forcetorque
+    return ex_eepos.T, ex_eerot.T, ex_eequat.T, ex_eeposvel.T, ex_eerotvel.T, ex_forcetorque.T
+    # transform to normal shape like (3, ex_length)
 
 
 

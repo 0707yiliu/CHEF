@@ -1,10 +1,14 @@
+import random
+
 import numpy as np
 import math
 from gymnasium_envs.envs.core import MJRobot
 from gymnasium import spaces
 
-from gymnasium_envs.utils import _normalization
+from gymnasium_envs.utils import _normalization, interp_preprocessed_data_with_vel
 from scipy.spatial.transform import Rotation
+from gymnasium_envs.DMPs import dmps
+import os
 
 class dualUR5e(MJRobot):
     def __init__(self,
@@ -26,6 +30,7 @@ class dualUR5e(MJRobot):
         # specified site in simulation
         self.L_eef = 'LEEF'
         self.R_eef = 'REEF'
+
 
         super().__init__(
             sim,
@@ -63,15 +68,16 @@ class singleUR5e(MJRobot):
                  sim,
                  control_type: str = 'ee',
                  control_ee_rot: bool = True,
-                 dmps_weights_num: int = 10,
+                 dmps_weights_num: int = 50,
                  dmps_weights_act: bool = True,
-                 control_finger: bool = True,
+                 control_finger: bool = False,
                  ) -> None:
         self.sensor_num = 4
         # action space definition
         n_actions = 3 if control_type == 'ee' else 6
         n_actions += 3 if control_ee_rot is True else 0
         n_actions += 2 if control_finger is True else 0
+        n_actions += 6 if dmps_weights_act is True else 1  # add the force torque demonstration when using DMPs
         n_actions *= dmps_weights_num if dmps_weights_act is True else 1
         action_space = spaces.Box(-1.0, 1.0, shape=(n_actions,), dtype=np.float32)
         # specified site in simulation
@@ -79,6 +85,7 @@ class singleUR5e(MJRobot):
         self.env_index = -1
         self.arm_ee_max_pos = np.array([-0.5 + 0.85, 0.85, 0.816 + 1.1])
         self.arm_ee_min_pos = np.array([-0.5 - 0.85, -0.85, 0.816])
+        self.dmp_n_bfs = dmps_weights_num
 
         super().__init__(
             sim,
@@ -176,13 +183,39 @@ class singleUR5e(MJRobot):
         self.sim.set_forward()
         _reset_goal = False
         # hard code for different skill's environment
-        if self.env_index == 0: # reach skill,
+        local_path = os.path.dirname(os.path.abspath(__file__)) + os.path.sep
+
+        if self.env_index == 0:  # reach skill,
             qpos_random = np.deg2rad(np.random.uniform(-np.ones(6) * 60, np.ones(6) * 60))
             qpos_random[0] = np.deg2rad(np.random.uniform(-180, 180))
-            qpos_random[1] -= 1.57
-            self.sim.set_joint_qpos(self.joint_list[:-1], qpos_random) # set the joint randomly
+            qpos_random[1] -= 1.57  # make the arm stand upright on the table
+            self.sim.set_joint_qpos(self.joint_list[:-1], qpos_random)  # set the joint randomly
             self.sim.control_joints(self.actuator_list[:-1], qpos_random)
-        elif self.env_index == 1: # flip skill, use IK to generate one posture, fix the Z-rotation face to the ground
+            # TODO: testing in the reach env for dmps
+            start_pos, start_quat = self.sim.forward_kinematics_kdl(qpos_random)  # get the reset pos and rot
+            start_rot = Rotation.from_quat(start_quat).as_euler('xyz', degrees=False)
+            target_pos = target_goal  # get the reset target goal for dmp
+            target_rot = np.deg2rad(np.random.uniform([90, 0, -180], [90, 0, 180]))
+            start_vels, start_forcetorque = np.zeros(6), np.zeros(6)
+            target_vels, target_forcetorque = np.zeros(6), np.zeros(6)
+            self.start_state = np.concatenate((start_pos, start_rot, start_forcetorque))
+            self.target_state = np.concatenate((target_pos, target_rot, target_forcetorque))
+            data_path = local_path + '../../datasets/reach/'
+            data_names = os.listdir(data_path)
+            data_path = data_path + random.choice(data_names)
+            demo_ee_pos, demo_ee_rot, demo_ee_posvel, demo_ee_rotvel, demo_ee_quat, demo_eeft = interp_preprocessed_data_with_vel(data_path)
+            demonstration_trajs = np.concatenate((demo_ee_pos, demo_ee_rot, demo_eeft), axis=0)
+            self.DMPs = dmps.dmp_discrete_dyn_weight(n_dmps=demonstration_trajs.shape[0],
+                                                n_bfs=self.dmp_n_bfs,
+                                                dt=1.0 / demonstration_trajs.shape[1])
+            self.DMPs.learning(demonstration_trajs)
+            self.dmp_traj, _, _ = self.DMPs.reproduce(dyn_w_gate=False,
+                                                 initial=self.start_state,
+                                                 goal=self.target_state,
+                                                )  # get output of dmps, do not need the gradient
+
+
+        elif self.env_index == 1:  # flip skill, use IK to generate one posture, fix the Z-rotation face to the ground
             base = self.sim.get_body_position('baseL')
             ee_noise = np.random.uniform(np.ones(3) * -0.02, np.ones(3) * 0.02)
             sim_euler = np.random.uniform(np.deg2rad([-10, -10, -180]), np.deg2rad([10, 10, 180]))

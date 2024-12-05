@@ -166,8 +166,8 @@ class MJFunc:
         return qpos
 
     def forward_kinematics_kdl(self, qpos) -> np.ndarray:
-        ee_pos, ee_qua = self.kdl_solver.forward(qpos=qpos)
-        return ee_pos, ee_qua
+        ee_pos, ee_quat = self.kdl_solver.forward(qpos=qpos)
+        return ee_pos, ee_quat
 
     def inverse_kinematics_ikfast(self, target_position, target_orientation):
         pose_quat = np.concatenate([target_position, target_orientation])
