@@ -4,7 +4,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 
-from .cs import CanonicalSystem
+from gymnasium_envs.DMPs.cs import CanonicalSystem
 from gymnasium_envs.utils import _inv_normalization
 
 
