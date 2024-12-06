@@ -4,6 +4,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation
 
+
+def lowpass_filter(last, cur, ratio=0.7):
+    new = ratio * last + (1 - ratio) * cur
+    return new
+
 def circle_sample(center_x, center_y, diameter_in, diameter_out, thickness_low, thicness_high):
     """
     create the circle shape range for target point sampling for robot

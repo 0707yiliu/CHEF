@@ -456,11 +456,15 @@ class dmp_discrete_dyn_weight():
             else:
                 k2 = 1.0
             if dyn_w_gate is True and dyn_w is not None:
+                col = dyn_w.shape[1]
+                repeat_norm_range = np.repeat(np.array([self.norm_range]).T, col, axis=1)
+                repeat_norm_min = np.repeat(np.array([self.norm_min]).T, col, axis=1)
                 dyn_w = _inv_normalization(dyn_w,
-                                           self.norm_range,
-                                           self.norm_min,
+                                           _range=repeat_norm_range,
+                                           _min=repeat_norm_min,
                                            range_max=norm_range_max,
                                            range_min=norm_range_min)
+                # print(self.w.shape, dyn_w.shape)
                 assert self.w.shape == dyn_w.shape
                 f = k * (np.dot(psi, dyn_w[d]) * x * k2 / np.sum(psi)) - k * (self.goal[d] - self.y0[d]) * x
             else:

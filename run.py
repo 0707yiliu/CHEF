@@ -12,7 +12,7 @@ with open('config/chef_v0.yml', 'r', encoding='utf-8') as cfg:
 
 env = gym.make(
     config['task_name'],
-    render=True,
+    render=False,
     xml_path=config['xml_path'],
     xml_file_name=config['xml_file_name'],
     basic_skills=config['basic_skill_name'],
@@ -23,9 +23,13 @@ env = gym.make(
 )
 env.reset()
 t = 0
+curr_time = time.time()
 while True:
-    obs, reward, terminated, _, info = env.step(np.zeros(14))
+    obs, reward, terminated, _, info = env.step(np.zeros(240))
     t += 1
-    if t == 1500:
+    print(t)
+    if t == 2010:
         env.reset()
+        print('one loop')
+        print('time cost:', time.time() - curr_time)
         t = 0

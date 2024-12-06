@@ -5,9 +5,10 @@ import math
 from gymnasium_envs.envs.core import MJRobot
 from gymnasium import spaces
 
-from gymnasium_envs.utils import _normalization, interp_preprocessed_data_with_vel, euclidean_distance
+from gymnasium_envs.utils import _normalization, interp_preprocessed_data_with_vel, euclidean_distance, lowpass_filter
 from scipy.spatial.transform import Rotation
 from gymnasium_envs.DMPs import dmps
+from gymnasium_envs.admittance_controller.core import FT_controller as AdmController
 import os
 
 class dualUR5e(MJRobot):
@@ -99,7 +100,12 @@ class singleUR5e(MJRobot):
         self.ee_rot_increment_range = np.ones(3) * np.deg2rad(10)  # the maximum action step for EEF's rot, for limit the DMPs' random weight
         self.ee_force_increment_range = np.ones(6) * 10
         self.ee_increment_range = np.concatenate((self.ee_pos_increment_range, self.ee_rot_increment_range, self.ee_force_increment_range))
-
+        # admittance controller configuration, hard code of configuration, using critical damping
+        self.adm_controller = AdmController(m=0.5, k=1000, kr=5, dt=0.01)
+        self.admittance_params = np.zeros((3, 3))  # contains acc, vel and pos in xyz derictions
+        self.admittance_paramsT = np.zeros((3, 3))
+        self.truncation_num = 4  # Number of digits to be truncated, used when set_action
+        self.last_ft = np.zeros(6)  # the last force torque sensor for guiding admittance controller, used be filtered
 
         super().__init__(
             sim,
@@ -114,6 +120,9 @@ class singleUR5e(MJRobot):
 
 
     def set_action(self, action: np.ndarray) -> None:
+        action = action.copy()
+        act_len = len(action)
+        action = action.reshape(int(act_len/self.dmp_n_bfs), self.dmp_n_bfs)
         set_dmps_traj, _, _ = self.DMPs.reproduce(
                                                     dyn_w_gate=True,
                                                     dyn_w=action,
@@ -124,26 +133,47 @@ class singleUR5e(MJRobot):
                                                     )
         _error_dmps = set_dmps_traj[:, self.follow_dmp_step] - self.dmp_traj[:, self.follow_dmp_step]
         # limit the change of pos, rot, force and torque
-        _err_extend_index = np.where((abs(_error_dmps) - self.ee_increment_range) > 0)
+        _err_extend_index = np.where((abs(_error_dmps) - self.ee_increment_range) > 0)[0]
         if len(_err_extend_index) > 0:
+            # print(_err_extend_index[0], len(_err_extend_index))
             for i in range(len(_err_extend_index)):
                 _index = _err_extend_index[i]
+                # print('--', _index, i)
                 if _error_dmps[_index] < 0:
                     set_dmps_traj[_index, self.follow_dmp_step] = self.dmp_traj[_index, self.follow_dmp_step] - \
                                                                   self.ee_increment_range[_index]
                 else:
                     set_dmps_traj[_index, self.follow_dmp_step] = self.dmp_traj[_index, self.follow_dmp_step] + \
                                                                   self.ee_increment_range[_index]
+
         # the limited action is set_dmps_traj (12-dim), which is used as the desired state for admittance controller
-
-
-
-        set_dmps_pos = set_dmps_traj[0:3, self.follow_dmp_step]  # hard code for DMPs trajectory, can be improved in init function
-        set_dmps_rot = set_dmps_traj[3:6, self.follow_dmp_step]  # hard code for DMPs trajectory, can be improved in init function
-        set_dmps_force = set_dmps_traj[6:9, self.follow_dmp_step]  # hard code for DMPs trajectory, can be improved in init function
-        set_dmps_torque = set_dmps_traj[9:12, self.follow_dmp_step]  # hard code for DMPs trajectory, can be improved in init function
-
+        des_pos = np.around(set_dmps_traj[0:3, self.follow_dmp_step], self.truncation_num)  # hard code the getting pos, rot and force/torque
+        des_euler = np.around(set_dmps_traj[3:6, self.follow_dmp_step], self.truncation_num)
+        des_ft = np.around(set_dmps_traj[6:12, self.follow_dmp_step], self.truncation_num)
+        _curr_ft = np.around(self.sim.get_ft_sensor('Lforce', 'Ltorque'), self.truncation_num)
+        # print(des_ft.shape, _curr_ft.shape)
+        _err_ft = _curr_ft - des_ft
+        self.last_ft = lowpass_filter(self.last_ft, _err_ft)
+        pos_d, rot_d, self.admittance_params, self.admittance_paramsT = self.adm_controller.admittance_control(
+                                                                                desired_position=des_pos,
+                                                                                desired_rotation=des_euler,
+                                                                                FT_data=self.last_ft,
+                                                                                params_mat=self.admittance_params,
+                                                                                paramsT_mat=self.admittance_paramsT,
+                                                                                )
+        # print(pos_d)
+        position_d = np.around(pos_d, self.truncation_num)
+        rotation_d = np.around(rot_d, self.truncation_num)
+        r_target_quat = Rotation.from_euler('xyz', rotation_d, degrees=False).as_quat()
+        curr_qpos = np.array([self.sim.get_joint_angle(joint=self.joint_list[i]) for i in range(6)])  # get the qpos without finger
+        ik_qpos = self.sim.inverse_kinematics_kdl( current_joint=curr_qpos,
+                                                   target_position=position_d,
+                                                   target_orientation=r_target_quat,)
+        ik_qpos = np.around(ik_qpos, self.truncation_num)
+        self.sim.control_joints(self.actuator_list[:-1], ik_qpos)
         self.follow_dmp_step += 1
+        if self.follow_dmp_step > self.dmp_max_step:
+            self.follow_dmp_step = self.dmp_max_step
         self.sim.step()
         # zeros_angle = [0, 0, 0, 0, 0, 0]
         # self.sim.set_joint_qpos(self.joint_list[:-1], self.init_qpos)
