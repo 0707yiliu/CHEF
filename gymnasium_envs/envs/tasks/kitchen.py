@@ -15,8 +15,11 @@ class KitchenMultiTask(Task):
                  specified_skills: list = [],
                  kitchen_tasks_name: list = [],
                  kitchen_tasks_chain: dict = {},
+                 normalization_range: list = [0, 1],
                  ) -> None:
         super().__init__(sim)
+        self.norm_max = normalization_range[1]
+        self.norm_min = normalization_range[0]
         #  multi skills switch for basic and specified
         self.switch_gate = switch_gate  # use the switch mode
         self.basic_skills = basic_skills
@@ -101,9 +104,9 @@ class KitchenMultiTask(Task):
         #  !the skill imitation by RL. Obs space in env contains one target for unified perspectives
         target_body_name = 'grab_obj'
         target_goal_pos = self.sim.get_body_position(target_body_name)
-        norm_target_goal_pos = _normalization(target_goal_pos, self.reset_goal_max_pos, self.reset_goal_min_pos)
+        norm_target_goal_pos = _normalization(target_goal_pos, self.reset_goal_max_pos, self.reset_goal_min_pos, range_max=self.norm_max, range_min=self.norm_min)
         target_goal_quat = self.sim.get_body_quaternion(target_body_name)
-        norm_target_goal_quat = _normalization(target_goal_quat, 1, -1)
+        norm_target_goal_quat = _normalization(target_goal_quat, _max=1, _min=-1, range_max=self.norm_max, range_min=self.norm_min)
         obs = np.concatenate([norm_target_goal_pos, norm_target_goal_quat])
         return obs
 

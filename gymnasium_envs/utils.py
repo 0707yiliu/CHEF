@@ -26,23 +26,27 @@ def circle_sample(center_x, center_y, diameter_in, diameter_out, thickness_low, 
     return np.array([x, y, z])
 
 
-def _normalization(data, _max, _min):
+def _normalization(data, _max, _min, range_max=1, range_min=0):
     if type(data) is not type(np.array([])):
         data = np.array(data)
     if type(_max) is not type(np.array([])):
         _max = np.array(_max)
         _min = np.array(_min)
     _range = _max - _min
-    return (data - _min) / _range
+    resize_range = range_max - range_min
+    new_data = (resize_range * (data - _min) / _range) + range_min
+    return new_data
 
-def _inv_normalization(data, _range, _min):
+
+def _inv_normalization(data, _range, _min, range_max=1, range_min=0):
     if type(data) is not type(np.array([])):
         data = np.array(data)
     if type(_range) is not type(np.array([])):
         _range = np.array(_range)
     if type(_min) is not type(np.array([])):
         _min = np.array(_min)
-    raw_data = data * _range + _min
+    resize_range = range_max - range_min
+    raw_data = ((data - range_min) * _range / resize_range) + _min
     return raw_data
 
 

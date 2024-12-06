@@ -19,6 +19,7 @@ env = gym.make(
     specified_skills=config['specified_skill_name'],
     kitchen_tasks_name=config['kitchen_tasks_name'],
     kitchen_tasks_chain=config['kitchen_tasks_chain'],
+    normalization_range=config['normalization_range'],
 )
 env.reset()
 t = 0

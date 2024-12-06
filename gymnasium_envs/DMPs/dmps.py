@@ -194,7 +194,7 @@ class dmp_discrete():
         for t in range(timesteps):
             y_reproduce[t], dy_reproduce[t], ddy_reproduce[t] = self.step(tau=tau)
 
-        return y_reproduce, dy_reproduce, ddy_reproduce
+        return y_reproduce.T, dy_reproduce.T, ddy_reproduce.T
 
     def step(self, tau=None):
         # run canonical system
@@ -397,7 +397,7 @@ class dmp_discrete_dyn_weight():
         self.norm_min = self.w.min(axis=1)
         self.norm_range = self.w.max(axis=1) - self.norm_min
 
-    def reproduce(self, dyn_w_gate=False, dyn_w=None, tau=None, initial=None, goal=None):
+    def reproduce(self, dyn_w_gate=False, dyn_w=None, norm_range_max=1, norm_range_min=0, tau=None, initial=None, goal=None):
         # set temporal scaling
         if tau == None:
             timesteps = self.timesteps
@@ -405,11 +405,12 @@ class dmp_discrete_dyn_weight():
             timesteps = round(self.timesteps / tau)
 
         # set initial state
-        if initial != None:
+
+        if initial is not None:
             self.y0 = initial
 
         # set goal state
-        if goal != None:
+        if goal is not None:
             self.goal = goal
 
         # reset state
@@ -420,11 +421,15 @@ class dmp_discrete_dyn_weight():
         ddy_reproduce = np.zeros((timesteps, self.n_dmps))
 
         for t in range(timesteps):
-            y_reproduce[t], dy_reproduce[t], ddy_reproduce[t] = self.step(tau=tau, dyn_w_gate=dyn_w_gate, dyn_w=dyn_w)
+            y_reproduce[t], dy_reproduce[t], ddy_reproduce[t] = self.step(tau=tau,
+                                                                          dyn_w_gate=dyn_w_gate,
+                                                                          dyn_w=dyn_w,
+                                                                          norm_range_max=norm_range_max,
+                                                                          norm_range_min=norm_range_min)
 
-        return y_reproduce, dy_reproduce, ddy_reproduce
+        return y_reproduce.T, dy_reproduce.T, ddy_reproduce.T
 
-    def step(self, dyn_w_gate=False, dyn_w=None, tau=None):
+    def step(self, dyn_w_gate=False, dyn_w=None, norm_range_max=1, norm_range_min=0, tau=None):
         # run canonical system
         if tau == None:
             tau = self.tau
@@ -451,7 +456,11 @@ class dmp_discrete_dyn_weight():
             else:
                 k2 = 1.0
             if dyn_w_gate is True and dyn_w is not None:
-                dyn_w = _inv_normalization(dyn_w, self.norm_range, self.norm_min)
+                dyn_w = _inv_normalization(dyn_w,
+                                           self.norm_range,
+                                           self.norm_min,
+                                           range_max=norm_range_max,
+                                           range_min=norm_range_min)
                 assert self.w.shape == dyn_w.shape
                 f = k * (np.dot(psi, dyn_w[d]) * x * k2 / np.sum(psi)) - k * (self.goal[d] - self.y0[d]) * x
             else:
@@ -473,11 +482,11 @@ if __name__ == "__main__":
     ee_pos, ee_rot, ee_posvel, ee_rotvel, ee_quat, eeft = interp_preprocessed_data_with_vel(data_path)
     y_demo = ee_pos
     # # DMPs learning
-    dmp = dmp_discrete(n_dmps=y_demo.shape[0], n_bfs=50, dt=1.0 / y_demo.shape[1])
+    dmp = dmp_discrete_dyn_weight(n_dmps=y_demo.shape[0], n_bfs=20, dt=1.0 / y_demo.shape[1])
     dmp.learning(y_demo, plot=True)
-    y_reproduce, dy_reproduce, ddy_reproduce = dmp.reproduce(initial=[-0.5, 0, 0], goal=[-0.1, 0, 0])
-    plt.plot(y_demo[0, :], 'g', label='demo')
-    plt.plot(y_reproduce[:, 0], 'r--', label='reproduce')
+    y_reproduce, dy_reproduce, ddy_reproduce = dmp.reproduce(initial=[0,0,0], goal=[-0.1, 0, 0.3])
+    plt.plot(y_demo[2, :], 'g', label='demo')
+    plt.plot(y_reproduce[2, :], 'r--', label='reproduce')
     plt.show()
 
     # data_len = 100

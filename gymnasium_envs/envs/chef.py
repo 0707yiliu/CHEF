@@ -18,7 +18,8 @@ class ChefEnv_v0(RobotTaskEnv):
                  basic_skills: list = [],
                  specified_skills: list = [],
                  kitchen_tasks_name: list = [],
-                 kitchen_tasks_chain: dict = {}
+                 kitchen_tasks_chain: dict = {},
+                 normalization_range: list = [-1, 1],
                  ):
 
         sim = MJFunc(
@@ -29,6 +30,7 @@ class ChefEnv_v0(RobotTaskEnv):
 
         robot = singleUR5e(
             sim=sim,
+            normalization_range=normalization_range,
         )
 
         task = KitchenMultiTask(
@@ -37,11 +39,13 @@ class ChefEnv_v0(RobotTaskEnv):
             specified_skills=specified_skills,
             kitchen_tasks_name=kitchen_tasks_name,
             kitchen_tasks_chain=kitchen_tasks_chain,
+            normalization_range=normalization_range,
         )
 
         super().__init__(
             robot,
             task,
-            render=render
+            render=render,
+            normalization_range=normalization_range,
         )
 

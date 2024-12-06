@@ -5,7 +5,7 @@ import math
 from gymnasium_envs.envs.core import MJRobot
 from gymnasium import spaces
 
-from gymnasium_envs.utils import _normalization, interp_preprocessed_data_with_vel
+from gymnasium_envs.utils import _normalization, interp_preprocessed_data_with_vel, euclidean_distance
 from scipy.spatial.transform import Rotation
 from gymnasium_envs.DMPs import dmps
 import os
@@ -68,24 +68,38 @@ class singleUR5e(MJRobot):
                  sim,
                  control_type: str = 'ee',
                  control_ee_rot: bool = True,
-                 dmps_weights_num: int = 50,
+                 dmps_weights_num: int = 20,
                  dmps_weights_act: bool = True,
                  control_finger: bool = False,
+                 normalization_range: list = [0, 1],
                  ) -> None:
         self.sensor_num = 4
+        self.norm_max = normalization_range[1]
+        self.norm_min = normalization_range[0]
         # action space definition
         n_actions = 3 if control_type == 'ee' else 6
         n_actions += 3 if control_ee_rot is True else 0
         n_actions += 2 if control_finger is True else 0
         n_actions += 6 if dmps_weights_act is True else 1  # add the force torque demonstration when using DMPs
         n_actions *= dmps_weights_num if dmps_weights_act is True else 1
-        action_space = spaces.Box(-1.0, 1.0, shape=(n_actions,), dtype=np.float32)
+        # print(n_actions)
+        # input()
+        action_space = spaces.Box(self.norm_min, self.norm_max, shape=(n_actions,), dtype=np.float32)
         # specified site in simulation
         self.L_eef = 'LEEF'
         self.env_index = -1
         self.arm_ee_max_pos = np.array([-0.5 + 0.85, 0.85, 0.816 + 1.1])
         self.arm_ee_min_pos = np.array([-0.5 - 0.85, -0.85, 0.816])
+        self.goal = np.zeros(3)
+        # DMPs configuration
         self.dmp_n_bfs = dmps_weights_num
+        self.follow_dmp_step = 0  # the step of following DMPs trajectory
+        self.dmp_max_step = 2000  # hard code, the DMPs length
+        self.ee_pos_increment_range = np.ones(3) * 0.01  # the maximum action step for EEF's pos, for limit the DMPs' random weight
+        self.ee_rot_increment_range = np.ones(3) * np.deg2rad(10)  # the maximum action step for EEF's rot, for limit the DMPs' random weight
+        self.ee_force_increment_range = np.ones(6) * 10
+        self.ee_increment_range = np.concatenate((self.ee_pos_increment_range, self.ee_rot_increment_range, self.ee_force_increment_range))
+
 
         super().__init__(
             sim,
@@ -100,6 +114,36 @@ class singleUR5e(MJRobot):
 
 
     def set_action(self, action: np.ndarray) -> None:
+        set_dmps_traj, _, _ = self.DMPs.reproduce(
+                                                    dyn_w_gate=True,
+                                                    dyn_w=action,
+                                                    norm_range_min=self.norm_min,
+                                                    norm_range_max=self.norm_max,
+                                                    initial=self.start_state,
+                                                    goal=self.target_state,
+                                                    )
+        _error_dmps = set_dmps_traj[:, self.follow_dmp_step] - self.dmp_traj[:, self.follow_dmp_step]
+        # limit the change of pos, rot, force and torque
+        _err_extend_index = np.where((abs(_error_dmps) - self.ee_increment_range) > 0)
+        if len(_err_extend_index) > 0:
+            for i in range(len(_err_extend_index)):
+                _index = _err_extend_index[i]
+                if _error_dmps[_index] < 0:
+                    set_dmps_traj[_index, self.follow_dmp_step] = self.dmp_traj[_index, self.follow_dmp_step] - \
+                                                                  self.ee_increment_range[_index]
+                else:
+                    set_dmps_traj[_index, self.follow_dmp_step] = self.dmp_traj[_index, self.follow_dmp_step] + \
+                                                                  self.ee_increment_range[_index]
+        # the limited action is set_dmps_traj (12-dim), which is used as the desired state for admittance controller
+
+
+
+        set_dmps_pos = set_dmps_traj[0:3, self.follow_dmp_step]  # hard code for DMPs trajectory, can be improved in init function
+        set_dmps_rot = set_dmps_traj[3:6, self.follow_dmp_step]  # hard code for DMPs trajectory, can be improved in init function
+        set_dmps_force = set_dmps_traj[6:9, self.follow_dmp_step]  # hard code for DMPs trajectory, can be improved in init function
+        set_dmps_torque = set_dmps_traj[9:12, self.follow_dmp_step]  # hard code for DMPs trajectory, can be improved in init function
+
+        self.follow_dmp_step += 1
         self.sim.step()
         # zeros_angle = [0, 0, 0, 0, 0, 0]
         # self.sim.set_joint_qpos(self.joint_list[:-1], self.init_qpos)
@@ -161,15 +205,36 @@ class singleUR5e(MJRobot):
         # # ---------------------
 
 
+    def compute_reward(self):
+        """
+        compute the reward for environment, distance for example
+        For different task/skill, the unified reward type would be used:
+            Trajectory's distance + Goal distance
+            (because we do not know the goal distance for different skill, we get the input directly rather function)
+        Returns:
+            Float type distance for goal task
+        """
+        if self.env_index == 2:  # pour skill, calculate the distance between cube and the area
+            cube_pos = self.sim.get_body_position('pourcube')
+            rew = euclidean_distance(self.goal, cube_pos)
+        else:  # flip and reach skill, calculate the distance between EEF site and target goal, contain rotation
+            ee_site_pos = self.sim.get_site_position('attachment_siteL')
+            pos_dis = euclidean_distance(self.goal, ee_site_pos)
+            # TODO: add rotation, for reach and flip has only one desired rotation posture
+            #  flip make x y zero, z 180, reach make x y zero, z 90
+            rew = pos_dis
+        return rew
+
+
     def get_obs(self) -> np.ndarray:
         L_ee_pos = np.copy(self.sim.get_body_position(self.L_eef))
-        norm_L_ee_pos = _normalization(L_ee_pos, self.arm_ee_max_pos, self.arm_ee_min_pos)
+        norm_L_ee_pos = _normalization(L_ee_pos, self.arm_ee_max_pos, self.arm_ee_min_pos, range_max=self.norm_max, range_min=self.norm_min)
         L_ee_quat = np.copy(self.sim.get_body_quaternion(self.L_eef))
-        norm_L_ee_quat = _normalization(L_ee_quat, 1, -1)  # hard code for normalization of quaternion
+        norm_L_ee_quat = _normalization(L_ee_quat, _max=1, _min=-1, range_max=self.norm_max, range_min=self.norm_min)  # hard code for normalization of quaternion
         L_ee_vels = np.copy(self.sim.get_body_velocity(self.L_eef))
-        norm_L_ee_vels = _normalization(L_ee_vels, 1, -1)  # hard code for normalization of velocity
+        norm_L_ee_vels = _normalization(L_ee_vels, _max=1, _min=-1, range_max=self.norm_max, range_min=self.norm_min)  # hard code for normalization of velocity
         L_FT_sensor = self.sim.get_ft_sensor('Lforce', 'Ltorque')
-        norm_L_FT_snesor = _normalization(L_FT_sensor, 10, -10)  # hard code for normalization of FT sensor
+        norm_L_FT_snesor = _normalization(L_FT_sensor, _max=10, _min=-10, range_max=self.norm_max, range_min=self.norm_min)  # hard code for normalization of FT sensor
         obs = np.concatenate([norm_L_ee_pos, norm_L_ee_quat, norm_L_ee_vels, norm_L_FT_snesor,])
         return obs
 
@@ -179,6 +244,7 @@ class singleUR5e(MJRobot):
         Returns:
             None
         """
+        self.goal = target_goal
         self.env_index = index
         self.sim.set_forward()
         _reset_goal = False
@@ -208,7 +274,7 @@ class singleUR5e(MJRobot):
             self.DMPs = dmps.dmp_discrete_dyn_weight(n_dmps=demonstration_trajs.shape[0],
                                                 n_bfs=self.dmp_n_bfs,
                                                 dt=1.0 / demonstration_trajs.shape[1])
-            self.DMPs.learning(demonstration_trajs)
+            self.DMPs.learning(demonstration_trajs, plot=False)
             self.dmp_traj, _, _ = self.DMPs.reproduce(dyn_w_gate=False,
                                                  initial=self.start_state,
                                                  goal=self.target_state,

@@ -45,6 +45,10 @@ class MJRobot(ABC):
     def reset(self, env_index, task_result):
         """Reset the robot and return the observation."""
 
+    @abstractmethod
+    def compute_reward(self):
+        """Compute the reward wit DMPs as the demonstration traj in robot part"""
+
     def setup(self) -> None:
         """Called after robot loading."""
         pass
@@ -89,7 +93,9 @@ class RobotTaskEnv(gym.Env):
     def __init__(self,
                  robot: MJRobot,
                  task: Task,
-                 render: bool) -> None:
+                 render: bool,
+                 normalization_range: list = [0, 1],
+                 ) -> None:
         assert robot.sim == task.sim, "The robot and the task must belong to the same simulation."
         self.robot = robot
         self.task = task
@@ -99,11 +105,13 @@ class RobotTaskEnv(gym.Env):
         _common_obs_shape = obs['common_observation'].shape[0]
         _current_state_shape = obs['current_state'].shape[0]
         _desired_state_shape = obs['desired_state'].shape[0]
+        norm_max = normalization_range[1]
+        norm_min = normalization_range[0]
         self.observation_space = spaces.Dict(
             {
-                "common_observation": spaces.Box(0, 1, shape=(_common_obs_shape,), dtype=np.float32),
-                "current_state": spaces.Box(0, 1, shape=(_current_state_shape,), dtype=np.float32),
-                "desired_state": spaces.Box(0, 1, shape=(_desired_state_shape,), dtype=np.float32),
+                "common_observation": spaces.Box(norm_min, norm_max, shape=(_common_obs_shape,), dtype=np.float32),
+                "current_state": spaces.Box(norm_min, norm_max, shape=(_current_state_shape,), dtype=np.float32),
+                "desired_state": spaces.Box(norm_min, norm_max, shape=(_desired_state_shape,), dtype=np.float32),
             }
         )
 
@@ -149,6 +157,7 @@ class RobotTaskEnv(gym.Env):
         self.robot.set_action(action)
         obs = self._get_obs()
         terminated = False
+        reward = self.robot.compute_reward()
         reward = 1 if terminated else 0
         info = self._get_info()
         return obs, reward, terminated, False, info
