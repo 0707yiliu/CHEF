@@ -3,7 +3,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation
-
+from scipy.spatial.distance import pdist
 
 def lowpass_filter(last, cur, ratio=0.7):
     new = ratio * last + (1 - ratio) * cur
@@ -56,7 +56,14 @@ def _inv_normalization(data, _range, _min, range_max=1, range_min=0):
 
 
 def euclidean_distance(a, b):
+    assert len(a) == len(b)
     return np.linalg.norm(a - b)
+
+
+def cosine_distance(a, b):
+    assert len(a) == len(b)
+    dis = pdist(np.vstack([a, b]), 'cosine')[0]
+    return dis
 
 
 def load_single_discrete_pkl(root_path, pkl_root_name):

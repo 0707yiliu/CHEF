@@ -190,7 +190,7 @@ class dmp_discrete():
         y_reproduce = np.zeros((timesteps, self.n_dmps))
         dy_reproduce = np.zeros((timesteps, self.n_dmps))
         ddy_reproduce = np.zeros((timesteps, self.n_dmps))
-
+        # print(self.w)
         for t in range(timesteps):
             y_reproduce[t], dy_reproduce[t], ddy_reproduce[t] = self.step(tau=tau)
 
@@ -262,8 +262,7 @@ class dmp_discrete_dyn_weight():
         self.generate_centers()
 
         # self.h = np.ones(self.n_bfs) * self.n_bfs / self.psi_centers # original
-        self.h = np.ones(
-            self.n_bfs) * self.n_bfs ** 1.5 / self.psi_centers / self.cs.alpha_x  # chose from trail and error
+        self.h = np.ones(self.n_bfs) * self.n_bfs ** 1.5 / self.psi_centers / self.cs.alpha_x  # chose from trail and error
 
         # reset state
         self.reset_state()
@@ -293,9 +292,9 @@ class dmp_discrete_dyn_weight():
         if isinstance(x, np.ndarray):
             x = x[:, None]
 
-        self.psi = np.exp(-self.h * (x - self.psi_centers) ** 2)
+        psi = np.exp(-self.h * (x - self.psi_centers) ** 2)
 
-        return self.psi
+        return psi
 
     def generate_weights(self, f_target):
         x_track = self.cs.run()
@@ -396,6 +395,7 @@ class dmp_discrete_dyn_weight():
         # get min and range for normalization and inverse normalization
         self.norm_min = self.w.min(axis=1)
         self.norm_range = self.w.max(axis=1) - self.norm_min
+        return self.w
 
     def reproduce(self, dyn_w_gate=False, dyn_w=None, norm_range_max=1, norm_range_min=0, tau=None, initial=None, goal=None):
         # set temporal scaling
@@ -420,6 +420,11 @@ class dmp_discrete_dyn_weight():
         dy_reproduce = np.zeros((timesteps, self.n_dmps))
         ddy_reproduce = np.zeros((timesteps, self.n_dmps))
 
+        # generate the whole time-x for single point
+        if tau == None:
+            tau = self.tau
+        self.whole_x = self.cs.whole_step_discrete(tau, timesteps)
+        # print(self.w)
         for t in range(timesteps):
             y_reproduce[t], dy_reproduce[t], ddy_reproduce[t] = self.step(tau=tau,
                                                                           dyn_w_gate=dyn_w_gate,
@@ -434,7 +439,6 @@ class dmp_discrete_dyn_weight():
         if tau == None:
             tau = self.tau
         x = self.cs.step_discrete(tau)
-
         # generate basis function activation
         psi = self.generate_psi(x)
 
@@ -477,6 +481,85 @@ class dmp_discrete_dyn_weight():
 
         return self.y, self.dy, self.ddy
 
+    def reproduce_single_point(self,
+                       dyn_w_gate=False, dyn_w=None, norm_range_max=1, norm_range_min=0,
+                       tau=None, initial=None, goal=None, time_point=0):
+        # set temporal scaling
+        if tau == None:
+            timesteps = self.timesteps
+        else:
+            timesteps = round(self.timesteps / tau)
+
+        # set initial state
+
+        if initial is not None:
+            self.y0 = initial
+
+        # set goal state
+        if goal is not None:
+            self.goal = goal
+
+        # reset state
+        self.reset_state()
+
+        y_reproduce, dy_reproduce, ddy_reproduce, x = self.step_single_point(tau=tau,
+                                                                          dyn_w_gate=dyn_w_gate,
+                                                                          dyn_w=dyn_w,
+                                                                          norm_range_max=norm_range_max,
+                                                                          norm_range_min=norm_range_min,
+                                                                          time_point=time_point,
+                                                                        )
+
+        return y_reproduce, dy_reproduce, ddy_reproduce, x
+
+    def step_single_point(self, dyn_w_gate=False, dyn_w=None, norm_range_max=1, norm_range_min=0, tau=None, time_point=0):
+        # run canonical system
+        if tau == None:
+            tau = self.tau
+        # get the one time point and only produce one point
+        x = self.whole_x[time_point]
+        # generate basis function activation
+        psi = self.generate_psi(x)
+
+        for d in range(self.n_dmps):
+            # generate forcing term
+            # ------------ Original DMP in Schaal 2002
+            # f = np.dot(psi, self.w[d])*x*(self.goal[d] - self.y0[d]) / np.sum(psi)
+
+            # ---------- Modified DMP in Schaal 2008, fixed the problem of g-y_0 -> 0
+            # k = self.alpha_y[d]
+            # f = k * (np.dot(psi, self.w[d]) * x / np.sum(psi)) - k * (self.goal[d] - self.y0[d]) * x # Modified DMP
+
+            # ---------- Modified DMP with a simple solution to overcome the drawbacks of trajectory reproduction
+            k = self.alpha_y[d]
+
+            self.delta_2[d] = self.goal[d] - self.y0[d]  # Modified DMP extended
+            if abs(self.delta[d]) > 1e-5:
+                k2 = self.delta_2[d] / self.delta[d]
+            else:
+                k2 = 1.0
+            if dyn_w_gate is True and dyn_w is not None:
+                col = dyn_w.shape[1]
+                repeat_norm_range = np.repeat(np.array([self.norm_range]).T, col, axis=1)
+                repeat_norm_min = np.repeat(np.array([self.norm_min]).T, col, axis=1)
+                dyn_w = _inv_normalization(dyn_w,
+                                           _range=repeat_norm_range,
+                                           _min=repeat_norm_min,
+                                           range_max=norm_range_max,
+                                           range_min=norm_range_min)
+                # print(self.w.shape, dyn_w.shape)
+                assert self.w.shape == dyn_w.shape
+                f = k * (np.dot(psi, dyn_w[d]) * x * k2 / np.sum(psi)) - k * (self.goal[d] - self.y0[d]) * x
+            else:
+                f = k * (np.dot(psi, self.w[d]) * x * k2 / np.sum(psi)) - k * (self.goal[d] - self.y0[d]) * x
+
+            # generate reproduced trajectory
+            self.ddy[d] = self.alpha_y[d] * (self.beta_y[d] * (self.goal[d] - self.y[d]) - self.dy[d]) + f
+            self.dy[d] += tau * self.ddy[d] * self.dt
+            self.y[d] += tau * self.dy[d] * self.dt
+
+        return self.y, self.dy, self.ddy, x
+
 # %% test code
 if __name__ == "__main__":
     from gymnasium_envs.utils import interp_preprocessed_data_with_vel
@@ -488,7 +571,7 @@ if __name__ == "__main__":
     # # DMPs learning
     dmp = dmp_discrete_dyn_weight(n_dmps=y_demo.shape[0], n_bfs=20, dt=1.0 / y_demo.shape[1])
     dmp.learning(y_demo, plot=True)
-    y_reproduce, dy_reproduce, ddy_reproduce = dmp.reproduce(initial=[0,0,0], goal=[-0.1, 0, 0.3])
+    y_reproduce, dy_reproduce, ddy_reproduce = dmp.reproduce(initial=[0,0,0.32], goal=[-0.1, 0, 0.18])
     plt.plot(y_demo[2, :], 'g', label='demo')
     plt.plot(y_reproduce[2, :], 'r--', label='reproduce')
     plt.show()

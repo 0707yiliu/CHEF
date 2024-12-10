@@ -4,7 +4,7 @@ import numpy as np
 
 from gymnasium_envs.envs.core import Task
 
-from gymnasium_envs.utils import circle_sample, _normalization, euclidean_distance
+from gymnasium_envs.utils import circle_sample, _normalization, euclidean_distance, cosine_distance
 from scipy.spatial.transform import Rotation
 
 class KitchenMultiTask(Task):
@@ -35,8 +35,8 @@ class KitchenMultiTask(Task):
 
         #  the goal of the target task
         self.goal = self._sample_goal()
-        self.reset_goal_max_pos = [-0.49 + 0.56, 0.56, 1.11]  # hard code the reset goal, related to the circle_sample func
-        self.reset_goal_min_pos = [-0.49 + 0.51, 0.51, 1.04]
+        self.reset_goal_max_pos = [-0.5 + 1, 1, 1]  # hard code the reset goal, related to the circle_sample func
+        self.reset_goal_min_pos = [-0.5 - 1, -1, -1]
 
         # Observation in Task (define in mujoco xml file)
         self.table_base_handle = 'obj_table'  # table base Z position
@@ -86,10 +86,13 @@ class KitchenMultiTask(Task):
         Returns: the position and orientation of two hands
 
         """
-        site_pos = self.sim.get_site_position('attachment_siteL')
+        if self.curr_skill is self.specified_skills[2]:
+            obj_pos = self.sim.get_body_position('pourcube')
+        else:
+            obj_pos = self.sim.get_site_position('attachment_siteL')
         # site_quat = self.sim.get_site_quaternion('attachment_siteL')
         # return np.concatenate([site_pos, site_quat]) # single arm
-        return site_pos  # single arm
+        return obj_pos  # single arm
 
     def get_obs(self) -> np.ndarray:
         # table_base_z = self.sim.get_body_position(self.table_base_handle)[-1]  # just need the height of the table
@@ -102,18 +105,32 @@ class KitchenMultiTask(Task):
         # fixed_area_pos = self.sim.get_body_position(self.fixed_area_handle)
 
         #  !the skill imitation by RL. Obs space in env contains one target for unified perspectives
-        target_body_name = 'grab_obj'
-        target_goal_pos = self.sim.get_body_position(target_body_name)
-        norm_target_goal_pos = _normalization(target_goal_pos, self.reset_goal_max_pos, self.reset_goal_min_pos, range_max=self.norm_max, range_min=self.norm_min)
-        target_goal_quat = self.sim.get_body_quaternion(target_body_name)
-        norm_target_goal_quat = _normalization(target_goal_quat, _max=1, _min=-1, range_max=self.norm_max, range_min=self.norm_min)
-        obs = np.concatenate([norm_target_goal_pos, norm_target_goal_quat])
+        grab_obj = 'grab_obj'
+        grab_obj_pos = self.sim.get_body_position(grab_obj)
+        norm_grab_obj_pos = _normalization(grab_obj_pos, self.reset_goal_max_pos, self.reset_goal_min_pos, range_max=self.norm_max, range_min=self.norm_min)
+        norm_grab_obj_pos = np.clip(norm_grab_obj_pos, self.norm_min, self.norm_max)
+        grab_obj_quat = self.sim.get_body_quaternion(grab_obj)
+        norm_grab_obj_quat = _normalization(grab_obj_quat, _max=1, _min=-1, range_max=self.norm_max, range_min=self.norm_min)
+        obs = np.concatenate([norm_grab_obj_pos, norm_grab_obj_quat])
         return obs
 
     def is_success(
-            self, achieved_goal: np.ndarray, desired_goal: np.ndarray, info: Dict[str, Any] = {}
-    ) -> Union[np.ndarray, float]:
-        pass
+            self,
+            achieved_goal_pos: np.ndarray,
+            desired_goal_pos: np.ndarray,
+            info: Dict[str, Any] = {}
+    ) -> Union[np.ndarray, float, bool]:
+        pos_dis = euclidean_distance(achieved_goal_pos, desired_goal_pos)
+        if self.curr_skill is self.specified_skills[1]:  # flip skill, the done need rotation
+            obj_euler = self.sim.get_body_euler('grab_obj')
+            target_rot = np.array([90, 0])
+            rot_dis = cosine_distance(obj_euler[:2], target_rot)
+            done = True if rot_dis < 0.1 and pos_dis < 0.01 else False
+        else:
+            done = True if pos_dis < 0.01 else False  # pouring and reach skill, the done do not need rotation
+        if done is True:
+            print('done')
+        return done
 
     def reset(self, skill_index):
         """

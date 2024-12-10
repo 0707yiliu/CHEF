@@ -47,6 +47,24 @@ class CanonicalSystem():
         self.x += tau * dx
         return self.x
 
+    def whole_step_discrete(self, tau=1.0, traj_len=2000):
+        """
+        produce all convergence step for DMPs_fast
+        Args:
+            tau: convergence factor
+            traj_len: the length of the trajectory
+
+        Returns:
+
+        """
+        x = np.zeros(traj_len)
+        init_x = 1.0
+        for i in range(traj_len):
+            dx = -self.alpha_x * init_x * self.dt
+            init_x += tau * dx
+            x[i] = init_x
+        return x
+
     def step_rhythmic(self, tau=1.0):
         self.x += tau * self.dt
         return self.x

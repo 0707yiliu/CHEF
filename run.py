@@ -4,15 +4,17 @@ import gymnasium as gym
 import numpy as np
 import gymnasium_envs
 from stable_baselines3 import PPO
+from stable_baselines3.common.env_checker import check_env
+from stable_baselines3.common.callbacks import CallbackList, BaseCallback, CheckpointCallback, EvalCallback
 import yaml
+import torch as th
 
 with open('config/chef_v0.yml', 'r', encoding='utf-8') as cfg:
     config = yaml.load(cfg, Loader=yaml.FullLoader)
 
-
 env = gym.make(
     config['task_name'],
-    render=False,
+    render=True,
     xml_path=config['xml_path'],
     xml_file_name=config['xml_file_name'],
     basic_skills=config['basic_skill_name'],
@@ -21,15 +23,25 @@ env = gym.make(
     kitchen_tasks_chain=config['kitchen_tasks_chain'],
     normalization_range=config['normalization_range'],
 )
-env.reset()
-t = 0
-curr_time = time.time()
-while True:
-    obs, reward, terminated, _, info = env.step(np.zeros(240))
-    t += 1
-    print(t)
-    if t == 2010:
-        env.reset()
-        print('one loop')
-        print('time cost:', time.time() - curr_time)
-        t = 0
+model_path = './logs/eval/Chef-v0-PPO-20241210170459/best_model.zip'
+model = PPO.load(model_path, env=env)
+obs, _ = env.reset()
+i = 0
+while i < 10000:
+    action, _state = model.predict(obs, deterministic=True)
+    obs, reward, done, _, info = env.step(action)
+    # obs_record = np.r_[obs_record, [obs]]
+    i += 1
+    # print(i)
+
+# t = 0
+# curr_time = time.time()
+# while True:
+#     obs, reward, terminated, _, info = env.step(np.zeros(240))
+#     t += 1
+#     print(t)
+#     if t == 2010:
+#         env.reset()
+#         print('one loop')
+#         print('time cost:', time.time() - curr_time)
+#         t = 0

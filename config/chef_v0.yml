@@ -1,5 +1,8 @@
 task_name: 'Chef-v0'
-render: True
+render: False
+log_path: './logs/'  # the root of tensorboard logging path
+model_path: './models/'
+alg: 'PPO'  # the algorithm used
 normalization_range: [-1, 1]
 xml_path: '/gymnasium_envs/robot_env_description/'  # root of the xml file
 xml_file_name: 'scene_reach.xml'  # xml file for training in mujoco

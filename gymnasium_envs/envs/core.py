@@ -29,7 +29,7 @@ class MJRobot(ABC):
         self.sensor_list = sensor_list
 
     @abstractmethod
-    def set_action(self, action: np.ndarray) -> None:
+    def set_action(self, action: np.ndarray):
         """Set the action. Must be called just before sim.step().
         Args:
             action (np.ndarray): The action.
@@ -73,8 +73,11 @@ class Task(ABC):
 
     @abstractmethod
     def is_success(
-            self, achieved_goal: np.ndarray, desired_goal: np.ndarray, info: Dict[str, Any] = {}
-    ) -> Union[np.ndarray, float]:
+            self,
+            achieved_goal_pos: np.ndarray,
+            desired_goal_pos: np.ndarray,
+            info: Dict[str, Any] = {}
+    ) -> Union[np.ndarray, float, bool]:
         """Returns whether the achieved goal match the desired goal."""
 
     @abstractmethod
@@ -103,29 +106,32 @@ class RobotTaskEnv(gym.Env):
         self.action_space = self.robot.action_space
         obs = self._get_obs()
         _common_obs_shape = obs['common_observation'].shape[0]
-        _current_state_shape = obs['current_state'].shape[0]
-        _desired_state_shape = obs['desired_state'].shape[0]
+        # _current_state_shape = obs['current_state'].shape[0]
+        # _desired_state_shape = obs['desired_state'].shape[0]
         norm_max = normalization_range[1]
         norm_min = normalization_range[0]
         self.observation_space = spaces.Dict(
             {
-                "common_observation": spaces.Box(norm_min, norm_max, shape=(_common_obs_shape,), dtype=np.float32),
-                "current_state": spaces.Box(norm_min, norm_max, shape=(_current_state_shape,), dtype=np.float32),
-                "desired_state": spaces.Box(norm_min, norm_max, shape=(_desired_state_shape,), dtype=np.float32),
+                "common_observation": spaces.Box(float("-inf"),  float("inf"), shape=(_common_obs_shape,), dtype=np.float64),
+                # "current_state": spaces.Box(norm_min, norm_max, shape=(_current_state_shape,), dtype=np.float64),
+                # "desired_state": spaces.Box(norm_min, norm_max, shape=(_desired_state_shape,), dtype=np.float64),
             }
         )
+        print('action space:', self.action_space)
+        print('observation space:', self.observation_space)
 
     def reset(self, seed: Optional[int] = None, options={}):
         super().reset(seed=seed)
         _reset_goal = True
         # reset the env first, because the robot with different skill need to be reset to different state
         # the mujoco reset would be used in robot.reset()
-        reset_skill_num = np.random.randint(0, 3)
-        reset_skill_num = 0  # for debug the reset of each environment
+        reset_skill_num = np.random.randint(0, 1)
+        # reset_skill_num = 0  # for debug the reset of each environment
         while _reset_goal is True:
             task_result = self.task.reset(reset_skill_num)
             _reset_goal = self.robot.reset(reset_skill_num, task_result)
-        return self._get_obs()
+        info = self._get_info()
+        return self._get_obs(), info
 
     def _get_obs(self):
         robot_obs = self.robot.get_obs()
@@ -135,8 +141,8 @@ class RobotTaskEnv(gym.Env):
         desired_state = self.task.get_desired_goal()
         return {
             'common_observation': observation,
-            'current_state': current_state,
-            'desired_state': desired_state,
+            # 'current_state': current_state,
+            # 'desired_state': desired_state,
         }
         # return {
         #     'common_observation': np.array([-1, -1]),
@@ -147,19 +153,22 @@ class RobotTaskEnv(gym.Env):
     def _get_info(self):
         return {
             "distance": np.linalg.norm(
-                np.array([1,2,3]) - np.array([1,3,3]), ord=1
+                self.task.get_desired_goal() - self.task.get_achieved_goal(), ord=1
             )
         }
 
     def step(
         self, action: ActType
     ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
-        self.robot.set_action(action)
+        truncated = self.robot.set_action(action)
         obs = self._get_obs()
-        terminated = False
+        terminated = self.task.is_success(self.task.get_achieved_goal(), self.task.get_desired_goal())
         reward = self.robot.compute_reward()
-        reward = 1 if terminated else 0
+        if terminated is True:
+            print(f'done, the reward is {reward}')
+        # reward = 1 if terminated else 0
+        # truncated = False
         info = self._get_info()
-        return obs, reward, terminated, False, info
+        return obs, reward, terminated, truncated, info
 
 

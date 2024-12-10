@@ -8,9 +8,12 @@
       <general gaintype="fixed" biastype="affine" ctrlrange="-6.2831 6.2831" gainprm="2000" biasprm="0 -2000 -400"
         forcerange="-150 150"/>
       <default class="size3L">
+        <joint armature="0.1" damping="200" />
+        <position kp="4000" forcerange="-150 150" ctrllimited="true" />
         <default class="size3_limitedL">
           <joint range="-3.1415 3.1415"/>
-          <general ctrlrange="-3.1415 3.1415"/>
+<!--          <general ctrlrange="-3.1415 3.1415"/>-->
+          <position ctrlrange="-3.14 3.14" ctrllimited="true" />
         </default>
       </default>
       <default class="finger">
@@ -18,7 +21,9 @@
         <general dyntype="none" biastype="affine" ctrlrange="0 0.07" forcerange="-150 150"/>
       </default>
       <default class="size1L">
-        <general gainprm="500" biasprm="0 -500 -100" forcerange="-28 28"/>
+        <joint armature="0.1" damping="50" />
+<!--        <general gainprm="500" biasprm="0 -500 -100" forcerange="-28 28"/>-->
+        <position kp="3000" forcerange="-28 28" />
       </default>
       <default class="visualL">
         <geom type="mesh" contype="0" conaffinity="0" group="2"/>
@@ -146,13 +151,13 @@
   </equality>
   
   <actuator>
-    <general class="size3L" name="shoulder_panL" joint="shoulder_pan_jointL"/>
-    <general class="size3L" name="shoulder_liftL" joint="shoulder_lift_jointL"/>
-    <general class="size3_limitedL" name="elbowL" joint="elbow_jointL"/>
-    <general class="size1L" name="wrist_1L" joint="wrist_1_jointL"/>
-    <general class="size1L" name="wrist_2L" joint="wrist_2_jointL"/>
-    <general class="size1L" name="wrist_3L" joint="wrist_3_jointL"/>
-    <general class="finger" name="fingers" joint="finger_joint1"/>
+    <position class="size3L" name="shoulder_panL" joint="shoulder_pan_jointL"/>
+    <position class="size3L" name="shoulder_liftL" joint="shoulder_lift_jointL"/>
+    <position class="size3_limitedL" name="elbowL" joint="elbow_jointL"/>
+    <position class="size1L" name="wrist_1L" joint="wrist_1_jointL"/>
+    <position class="size1L" name="wrist_2L" joint="wrist_2_jointL"/>
+    <position class="size1L" name="wrist_3L" joint="wrist_3_jointL"/>
+    <position class="finger" name="fingers" joint="finger_joint1"/>
   </actuator>
   
   <sensor>

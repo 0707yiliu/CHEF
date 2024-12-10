@@ -11,7 +11,7 @@ from ur_ikfast import ur_kinematics
 
 from scipy.spatial.transform import Rotation
 
-local_path = os.path.abspath('.') # get the run.py path (root path)
+local_path = os.path.abspath('.') # get the excuted path (root path)
 
 # rewrite xml
 try:
@@ -88,6 +88,12 @@ class MJFunc:
         quat = self.data.xquat[mujoco.mj_name2id(self.model, type=1, name=body)]
         return np.array(quat)
 
+    def get_body_euler(self, body: str) -> np.ndarray:
+        quat = self.data.xquat[mujoco.mj_name2id(self.model, type=1, name=body)]
+        roll_quat = np.roll(quat, -1)
+        euler = Rotation.from_quat(roll_quat).as_euler('xyz', degrees=False)
+        return euler
+
     def get_body_velocity(self, body: str) -> np.ndarray:
         vel = self.data.cvel[mujoco.mj_name2id(self.model, type=1, name=body)]
         return np.array(vel)
@@ -103,8 +109,13 @@ class MJFunc:
 
     def get_site_quaternion(self, site: str) -> np.ndarray:
         mat = self.data.site_xmat[mujoco.mj_name2id(self.model, type=6, name=site)]
-        quat = Rotation.from_quat(mat.reshape((3, 3))).as_quat()
+        quat = Rotation.from_matrix(mat.reshape((3, 3))).as_quat()
         return quat
+
+    def get_site_euler(self, site: str) -> np.ndarray:
+        mat = self.data.site_xmat[mujoco.mj_name2id(self.model, type=6, name=site)]
+        rot = Rotation.from_matrix(mat.reshape((3, 3))).as_euler('xyz', degrees=False)
+        return rot
 
     def get_site_mat(self, site: str) -> np.ndarray:
         return self.data.site_xmat[mujoco.mj_name2id(self.model, type=6, name=site)]
