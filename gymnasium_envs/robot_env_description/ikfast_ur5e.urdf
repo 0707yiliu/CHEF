@@ -1,12 +1,13 @@
-<?xml version="1.0" ?>
-<robot name="ur5e">
-  <link name="base_link">
+<link name="base_link">
+
   </link>
   <joint name="shoulder_pan_joint" type="revolute">
     <parent link="base_link"/>
     <child link="shoulder_link"/>
     <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.163"/>
     <axis xyz="0 0 1"/>
+    <limit effort="150.0" lower="-3.14159265359" upper="3.14159265359" velocity="3.14"/>
+    <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="shoulder_link">
   </link>
@@ -15,6 +16,8 @@
     <child link="upper_arm_link"/>
     <origin rpy="0.0 1.5707963 0.0" xyz="0.0 0.138 0.0"/>
     <axis xyz="0 1 0"/>
+    <limit effort="150.0" lower="-3.14159265359" upper="3.14159265359" velocity="3.14"/>
+    <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="upper_arm_link">
   </link>
@@ -23,6 +26,8 @@
     <child link="forearm_link"/>
     <origin rpy="0.0 0.0 0.0" xyz="0 -0.131 0.425"/>
     <axis xyz="0 1 0"/>
+    <limit effort="150.0" lower="-3.14159265359" upper="3.14159265359" velocity="3.14"/>
+    <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="forearm_link">
   </link>
@@ -31,6 +36,8 @@
     <child link="wrist_1_link"/>
     <origin rpy="0.0 1.570796325 0.0" xyz="0.0 0.0 0.392"/>
     <axis xyz="0 1 0"/>
+    <limit effort="28.0" lower="-3.14159265359" upper="3.14159265359" velocity="6.28"/>
+    <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="wrist_1_link">
   </link>
@@ -39,6 +46,8 @@
     <child link="wrist_2_link"/>
     <origin rpy="0.0 0.0 0.0" xyz="0.0 0.127 0.0"/>
     <axis xyz="0 0 1"/>
+    <limit effort="28.0" lower="-3.14159265359" upper="3.14159265359" velocity="6.28"/>
+    <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="wrist_2_link">
   </link>
@@ -47,6 +56,8 @@
     <child link="wrist_3_link"/>
     <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.1"/>
     <axis xyz="0 1 0"/>
+    <limit effort="28.0" lower="-3.14159265359" upper="3.14159265359" velocity="6.28"/>
+    <dynamics damping="0.0" friction="0.0"/>
   </joint>
   <link name="wrist_3_link">
   </link>
@@ -59,8 +70,8 @@
   </link>
 
   <link name="tool0"/>
-  <joint name="tool_mid-tool0_fixed_joint" type="fixed">
-    <origin rpy="0 0 0" xyz="0 0.25 0"/>
+  <joint name="wrist_3_link-tool0_fixed_joint" type="fixed">
+    <origin rpy="-1.57079632679 0 0" xyz="0 0.1 0"/>
     <parent link="wrist_3_link"/>
     <child link="tool0"/>
   </joint>

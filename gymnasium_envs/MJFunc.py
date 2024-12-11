@@ -180,14 +180,14 @@ class MJFunc:
         ee_pos, ee_quat = self.kdl_solver.forward(qpos=qpos)
         return ee_pos, ee_quat
 
-    def inverse_kinematics_ikfast(self, target_position, target_orientation):
-        pose_quat = np.concatenate([target_position, target_orientation])
-        q_inv = self.ur5e_arm.inverse(pose_quat)
+    def inverse_kinematics_ikfast(self, target_position, target_orientation, q_guess=np.zeros(6)):
+        pose_quat = np.concatenate([target_position, target_orientation]) # xyz, rx, ry ,rz, w
+        q_inv = self.ur5e_arm.inverse(pose_quat, q_guess=q_guess) # xyz, rx, ry ,rz, w
         return q_inv
 
     def forward_kinematics_ikfast(self, qpos):
         pose_quat = self.ur5e_arm.forward(qpos)
-        return pose_quat[:3], pose_quat[3:]
+        return pose_quat[:3], pose_quat[3:] # xyz,  rx, ry ,rz, w
 
 
     @contextmanager

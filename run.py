@@ -3,7 +3,7 @@ import time
 import gymnasium as gym
 import numpy as np
 import gymnasium_envs
-from stable_baselines3 import PPO
+from stable_baselines3 import PPO, TD3
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.callbacks import CallbackList, BaseCallback, CheckpointCallback, EvalCallback
 import yaml
@@ -23,13 +23,18 @@ env = gym.make(
     kitchen_tasks_chain=config['kitchen_tasks_chain'],
     normalization_range=config['normalization_range'],
 )
-model_path = './logs/eval/Chef-v0-PPO-20241210170459/best_model.zip'
-model = PPO.load(model_path, env=env)
+model_path = './logs/checkpoint/Reach-v0-PPO-20241211103637/Reach-v0-PPO-20241211103637_2000000_steps.zip'
+if config['alg'] == 'PPO':
+    model = PPO.load(model_path, env=env)
+elif config['alg'] == 'TD3':
+    model = TD3.load(model_path, env=env)
 obs, _ = env.reset()
 i = 0
 while i < 10000:
     action, _state = model.predict(obs, deterministic=True)
     obs, reward, done, _, info = env.step(action)
+    if done:
+        env.reset()
     # obs_record = np.r_[obs_record, [obs]]
     i += 1
     # print(i)

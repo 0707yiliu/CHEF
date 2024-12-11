@@ -35,8 +35,11 @@ class KitchenMultiTask(Task):
 
         #  the goal of the target task
         self.goal = self._sample_goal()
-        self.reset_goal_max_pos = [-0.5 + 1, 1, 1]  # hard code the reset goal, related to the circle_sample func
-        self.reset_goal_min_pos = [-0.5 - 1, -1, -1]
+        # self.reset_goal_max_pos = [-0.5 + 0.4, -0.1, 1.15]  # hard code the reset goal, related to the circle_sample func
+        # self.reset_goal_min_pos = [-0.5 - 0.4, -0.6, 1]
+        self.reset_goal_max_pos = [0.05, 0.55, 0.2]  # hard code the reset goal, related to the circle_sample func
+        self.reset_goal_min_pos = [-0.05, 0.45, 0.1]
+        self.basic_robot = np.array([-0.5, 0, 0.816])
 
         # Observation in Task (define in mujoco xml file)
         self.table_base_handle = 'obj_table'  # table base Z position
@@ -55,7 +58,8 @@ class KitchenMultiTask(Task):
     def _sample_goal(self) -> np.ndarray:
         """TODO: the goal need to be defined by the task/skill (one goal state + current demonstration state)"""
 
-        goal = circle_sample(-0.5, 0, 0.5, 0.55, 1.05, 1.1)
+        # goal = circle_sample(-0.5, 0, 0.5, 0.55, 1.05, 1.1)
+        goal = np.random.uniform(np.array([-0.05, 0.45, 0.1])+np.array([-0.5, 0, 0.816]), np.array([0.05, 0.55, 0.2])+np.array([-0.5, 0, 0.816]))
         return goal
 
     def compute_reward(self) -> Union[np.ndarray, float]:
@@ -127,7 +131,7 @@ class KitchenMultiTask(Task):
             rot_dis = cosine_distance(obj_euler[:2], target_rot)
             done = True if rot_dis < 0.1 and pos_dis < 0.01 else False
         else:
-            done = True if pos_dis < 0.01 else False  # pouring and reach skill, the done do not need rotation
+            done = True if pos_dis < 0.02 else False  # pouring and reach skill, the done do not need rotation
         if done is True:
             print('done')
         return done
@@ -148,7 +152,8 @@ class KitchenMultiTask(Task):
             self.sim.reload_xml('scene_' + self.curr_skill + '.xml')
             self.last_skill = self.curr_skill
         self.sim.reset() # reset first and set goal and state then, goal sample from the circle
-        self.goal = circle_sample(-0.5, 0, 0.5, 0.55, 1.05, 1.1)
+        # self.goal = circle_sample(-0.5, 0, 0.5, 0.55, 1.05, 1.1)
+        self.goal = np.random.uniform(np.array([-0.05, 0.45, 0.1])+np.array([-0.5, 0, 0.816]), np.array([0.05, 0.55, 0.2])+np.array([-0.5, 0, 0.816]))
         # print(self.goal)
         # hard code for different skills' environment
         if skill_index == 0 or skill_index == 2:

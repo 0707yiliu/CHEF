@@ -3,7 +3,7 @@ import time
 import gymnasium as gym
 import numpy as np
 import gymnasium_envs
-from stable_baselines3 import PPO
+from stable_baselines3 import PPO, TD3, DDPG, HER, SAC
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.callbacks import CallbackList, BaseCallback, CheckpointCallback, EvalCallback
 import yaml
@@ -27,6 +27,8 @@ env = gym.make(
     kitchen_tasks_chain=config['kitchen_tasks_chain'],
     normalization_range=config['normalization_range'],
 )
+from stable_baselines3.common.monitor import Monitor
+env = Monitor(env)
 
 eval_callback = EvalCallback(
     env,
@@ -51,8 +53,20 @@ logs_file = config['log_path'] + 'tensorboards/' + config['task_name'] + '-' + c
 check_env(env)
 policy_kwargs = dict(activation_fn=th.nn.ReLU,
                      net_arch=dict(pi=[256, 256], vf=[256, 256]))
-if config['alg'] == 'PPO':
+if config['alg'] == 'TD3':
     print('PPO algorithm training.')
+    model = TD3(
+
+        policy='MultiInputPolicy',
+        env=env,
+        verbose=1,
+        learning_rate=0.0003,
+
+        batch_size=64,
+
+        tensorboard_log=logs_file,
+    )
+elif config['alg'] == 'PPO':
     model = PPO(
         policy_kwargs=policy_kwargs,
         policy='MultiInputPolicy',
@@ -65,13 +79,13 @@ if config['alg'] == 'PPO':
         n_epochs=10,
         tensorboard_log=logs_file,
     )
-    model.learn(
-        total_timesteps=3000000,
-        tb_log_name=config['alg'] + '-' + currenttime,
-        callback=callback,
-    )
-    print('training done')
-    model.save(config['model_path'] + config['alg'] + '/' + config['task_name'] + '-' + currenttime + '.pkl')
+model.learn(
+    total_timesteps=3000000,
+    tb_log_name=config['alg'] + '-' + currenttime,
+    callback=callback,
+)
+print('training done')
+model.save(config['model_path'] + config['alg'] + '/' + config['task_name'] + '-' + currenttime + '.pkl')
 
 #
 # env.reset()

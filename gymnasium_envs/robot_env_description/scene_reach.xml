@@ -23,7 +23,7 @@
   </worldbody>
   
   <!--<include file="ObjsTable.xml"/>-->
-  <include file="armTable.xml"/> 
+<!--  <include file="armTable.xml"/> -->
   <include file="ur5e_schunk.xml"/>
   <include file="objs4reach.xml"/>
 <!--  <include file="objs4reach_utils.xml"/>-->
