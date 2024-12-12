@@ -1,6 +1,6 @@
 task_name: 'Chef-v0'
-render: True
-log_path: './logs/'  # the root of tensorboard logging path
+render: False
+log_path: '/home/yi/project_ghent/chef/logs/'  # the root of tensorboard logging path
 model_path: './models/'
 alg: 'PPO'  # the algorithm used
 normalization_range: [-1, 1]
@@ -14,8 +14,15 @@ kitchen_tasks_chain: {'flip_bottle':['reach', 'pick', 'reach', 'flip', 'reach', 
                       'pick_cube': ['reach', 'pick', 'reach', 'release'],
 
 }
-# the chain formed by skills
+# the chain formed by skills, mainly used in robot part for DMPs
 demonstration_trajectories_paths: ''  # loading demonstration trajectory for different skills
 demonstration_length: 2000  # the length of the demonstration, uniformed
+DMPs_weights_num: 10
+ratio_demonstration2action: 3 # the ratio between the length of demonstration and length of the action step echo epoch
+# robot config
+ee_pos_limitation_low: [-0.2, 0.1, 0.2]
+ee_pos_limitation_high: [0.2, 0.7, 0.8]
+ee_rot_limitation_low: [-180, -10, -30]
+ee_rot_limitation_high: [-45, 10, 30]
 
 

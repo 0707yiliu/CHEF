@@ -6,8 +6,11 @@ from gymnasium_envs.envs.core import Task
 
 from gymnasium_envs.utils import circle_sample, _normalization, euclidean_distance, cosine_distance
 from scipy.spatial.transform import Rotation
+import yaml
 
 class KitchenMultiTask(Task):
+    with open('config/tasks/chef_v0.yml', 'r', encoding='utf-8') as cfg:
+        config = yaml.load(cfg, Loader=yaml.FullLoader)
     def __init__(self,
                  sim,
                  switch_gate: bool = True,
@@ -37,9 +40,9 @@ class KitchenMultiTask(Task):
         self.goal = self._sample_goal()
         # self.reset_goal_max_pos = [-0.5 + 0.4, -0.1, 1.15]  # hard code the reset goal, related to the circle_sample func
         # self.reset_goal_min_pos = [-0.5 - 0.4, -0.6, 1]
-        self.reset_goal_max_pos = [0.05, 0.55, 0.2]  # hard code the reset goal, related to the circle_sample func
-        self.reset_goal_min_pos = [-0.05, 0.45, 0.1]
-        self.basic_robot = np.array([-0.5, 0, 0.816])
+        self.reset_goal_max_pos = self.config['goal_max_pos']  # hard code the reset goal, related to the circle_sample func
+        self.reset_goal_min_pos = self.config['goal_min_pos']
+        self.basic_robot = np.zeros(3)
 
         # Observation in Task (define in mujoco xml file)
         self.table_base_handle = 'obj_table'  # table base Z position
@@ -143,6 +146,7 @@ class KitchenMultiTask(Task):
         """
         # reloading mj xml file
         # chose new env
+        self.basic_robot = self.sim.get_body_position('baseL')  # the the position of basic for single arm
         self.curr_skill = self.specified_skills[skill_index]
         # print(self.curr_skill, self.last_skill)
         if self.curr_skill == self.last_skill:

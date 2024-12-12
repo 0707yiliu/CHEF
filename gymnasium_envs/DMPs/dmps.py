@@ -568,10 +568,11 @@ if __name__ == "__main__":
     data_path = local_path + '../datasets/reach/20241204105455.npz'
     ee_pos, ee_rot, ee_posvel, ee_rotvel, ee_quat, eeft = interp_preprocessed_data_with_vel(data_path)
     y_demo = ee_pos
+    # print(y_demo[:, -1], y_demo.shape)
     # # DMPs learning
-    dmp = dmp_discrete_dyn_weight(n_dmps=y_demo.shape[0], n_bfs=20, dt=1.0 / y_demo.shape[1])
+    dmp = dmp_discrete_dyn_weight(n_dmps=y_demo.shape[0], n_bfs=10, dt=1.0 / y_demo.shape[1])
     dmp.learning(y_demo, plot=True)
-    y_reproduce, dy_reproduce, ddy_reproduce = dmp.reproduce(initial=[0,0,0.32], goal=[-0.1, 0, 0.18])
+    y_reproduce, dy_reproduce, ddy_reproduce = dmp.reproduce(initial=[0,0,0.323572], goal=[-0.1, 0, 0.182517])
     plt.plot(y_demo[2, :], 'g', label='demo')
     plt.plot(y_reproduce[2, :], 'r--', label='reproduce')
     plt.show()

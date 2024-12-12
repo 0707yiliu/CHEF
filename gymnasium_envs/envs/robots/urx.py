@@ -11,7 +11,6 @@ from gymnasium_envs.DMPs import dmps
 from gymnasium_envs.admittance_controller.core import FT_controller as AdmController
 import os
 import logging
-import yaml
 logging.basicConfig(format='%(asctime)s - %(levelname)s: %(message)s',
                     level=logging.DEBUG)
 
@@ -249,6 +248,65 @@ class ReachsingleUR5e(MJRobot):
         #     print('truncated in action step')
         self.sim.step()
         return truncated
+        # zeros_angle = [0, 0, 0, 0, 0, 0]
+        # self.sim.set_joint_qpos(self.joint_list[:-1], self.init_qpos)
+        # print(self.sim.get_body_position(self.L_eef) - self.sim.get_body_position('baseL'))
+        # # ---KDL Test---
+        # test_angle_zero = np.zeros(6)
+        # test_angle = np.deg2rad([45, 45, 45, 45, 45, 45])
+        # # test_angle = [0, 0, 0, 0, 0, -1.57]
+        # # test_angle = [0.3235, 0.7235,0.2235,0.4235,0.1235,0.5235]
+        # self.sim.set_joint_qpos(self.joint_list[:-1], self.init_qpos)
+        # qpos = np.array(test_angle)
+        # # print(np.array([self.sim.get_joint_angle(joint=self.joint_list[i]) for i in range(7)]))
+        # if self.env_index == 1:
+        #     base = self.sim.get_body_position('baseL')
+        #     sim_pos = self.sim.get_body_position('grab_obj')
+        #     sim_qua = np.roll(self.sim.get_body_quaternion('grab_obj'), -1)
+        #     sim_qua_test = [0.3535534, 0, 0.7071068, 0.6123724]
+        #     kdl_pos, kdl_qua = self.sim.forward_kinematics_kdl(self.init_qpos)
+        #     print(kdl_qua, Rotation.from_quat(kdl_qua).as_euler('xyz', degrees=True))
+        #     q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, sim_pos - base,
+        #                                             sim_qua)
+        #     print(q_inv)
+        #
+        #     # curr_joint_qpos = np.zeros(6)
+        #     # target_pos, target_quat = sim_pos, sim_qua
+        #     # start_pos, start_quat = self.sim.forward_kinematics_kdl(self.init_qpos)
+        #     # start_pos += base
+        #     # print(start_pos, start_quat)
+        #     # target_euler = Rotation.from_quat(target_quat).as_euler('xyz', degrees=False)
+        #     # start_euler = Rotation.from_quat(start_quat).as_euler('xyz', degrees=False)
+        #     # traj_num = 10
+        #     # traj_pos, traj_euler = np.zeros((3, traj_num)), np.zeros((3, traj_num))
+        #     # for i in range(3):
+        #     #     if target_pos[i] >= start_pos[i]:
+        #     #         traj_pos[i, :] = np.linspace(start_pos[i], target_pos[i], traj_num)
+        #     #         traj_euler[i, :] = np.linspace(start_euler[i], target_euler[i], traj_num)
+        #     #     else:
+        #     #         traj_pos[i, :] = np.linspace(target_pos[i], start_pos[i], traj_num)[::-1]
+        #     #         traj_euler[i, :] = np.linspace(target_euler[i], start_euler[i], traj_num)[::-1]
+        #     #
+        #     # q_inv = self.init_qpos
+        #     # for i in range(traj_num):
+        #     #     traj_quat = Rotation.from_euler('xyz', traj_euler[:, i], degrees=False).as_quat()
+        #     #     q_inv = self.sim.inverse_kinematics_kdl(q_inv, traj_pos[:, i] - base,
+        #     #                                             traj_quat)
+        #     #     # print(q_inv)
+        #     #     # print(traj_pos[:, i], traj_quat, start_pos, start_quat)
+        #     #     # print('---------')
+        #     #     # input()
+        #
+        #     print('-------------', '\n',
+        #         'sim pos:', sim_pos, '\n',
+        #         'sim qua:', sim_qua, '\n',
+        #         'kdl pos:', kdl_pos + base, '\n',
+        #         'kdl qua:', kdl_qua, '\n',
+        #         'kdl q inv:', q_inv,
+        #     )
+        #     input()
+        # # ---------------------
+
 
     def compute_reward(self):
         """
@@ -469,12 +527,11 @@ class ReachsingleUR5e(MJRobot):
         return _reset_goal
 
 class singleUR5e(MJRobot):
-    with open('config/chef_v0.yml', 'r', encoding='utf-8') as cfg:
-        config = yaml.load(cfg, Loader=yaml.FullLoader)
     def __init__(self,
                  sim,
                  control_type: str = 'ee',
                  control_ee_rot: bool = True,
+                 dmps_weights_num: int = 10,
                  dmps_weights_act: bool = True,
                  dmps_force_enable: bool = False,
                  control_finger: bool = False,
@@ -488,28 +545,28 @@ class singleUR5e(MJRobot):
         n_actions += 3 if control_ee_rot is True else 0
         n_actions += 2 if control_finger is True else 0
         n_actions += 6 if dmps_weights_act is True and dmps_force_enable is True else 0  # add the force torque demonstration when using DMPs
-        n_actions *= self.config['DMPs_weights_num'] if dmps_weights_act is True else 1
+        n_actions *= dmps_weights_num if dmps_weights_act is True else 1
         # print(n_actions)
         # input()
         action_space = spaces.Box(self.norm_min, self.norm_max, shape=(n_actions,), dtype=np.float32)
         # specified site in simulation
         self.L_eef = 'LEEF'
         self.env_index = -1
-        self.ee_high = np.array(self.config['ee_pos_limitation_high'])
-        self.ee_low = np.array(self.config['ee_pos_limitation_low'])
-        self.ee_rot_high = np.deg2rad(self.config['ee_rot_limitation_high'])
-        self.ee_rot_low = np.deg2rad(self.config['ee_rot_limitation_low'])
+        self.arm_ee_max_pos = np.array([-0.5 + 1, 1, 0.816 + 1.1])
+        self.arm_ee_min_pos = np.array([-0.5 - 1, -1, 0.816 - 1.1])
+        self.ee_high = np.array([0.2, 0.7, 0.8])
+        self.ee_low = np.array([-0.2, 0.1, 0.2])
+        self.ee_rot_high = np.deg2rad([-90, 10, 30])
+        self.ee_rot_low = np.deg2rad([-180, -10, -30])
         self.goal = np.zeros(3)
-        self.max_step_one_episode = self.config['demonstration_length'] * self.config['ratio_demonstration2action']
         # DMPs configuration
-        self.dmp_max_step = self.config['demonstration_length'] * self.config['ratio_demonstration2action'] # the DMPs length, should plus with the ratio for action step
         self.dmp_x = 0
-        self.dmp_n_bfs = self.config['DMPs_weights_num']
+        self.dmp_n_bfs = dmps_weights_num
         self.dmp_w = np.zeros(self.dmp_n_bfs * 12) if dmps_force_enable is True else np.zeros(self.dmp_n_bfs * 6)  # hard code for shape the size of dmps weight
         self.dmp_force_enable = dmps_force_enable  # the flag for enable force torque DMPs trajectory, delete or add in function
         self.follow_dmp_step = 0  # the step of following DMPs trajectory
-
-        self.ee_pos_increment_range = np.ones(3) * 0.015  # the maximum action step for EEF's pos, for limit the DMPs' random weight
+        self.dmp_max_step = 2000  # hard code, the DMPs length
+        self.ee_pos_increment_range = np.ones(3) * 0.01  # the maximum action step for EEF's pos, for limit the DMPs' random weight
         self.ee_rot_increment_range = np.ones(3) * np.deg2rad(5)  # the maximum action step for EEF's rot, for limit the DMPs' random weight
         self.ee_force_increment_range = np.ones(6) * 10 if dmps_force_enable is True else []
         self.ee_increment_range = np.concatenate((self.ee_pos_increment_range, self.ee_rot_increment_range, self.ee_force_increment_range))
@@ -537,7 +594,7 @@ class singleUR5e(MJRobot):
 
 
     def set_action(self, action: np.ndarray):
-        truncated = False  # for stop the episode when get max step
+        truncated = False
         # fix the action
         action = action.copy()
         act_len = len(action)
@@ -555,10 +612,8 @@ class singleUR5e(MJRobot):
                                                                 goal=self.target_state,
                                                                 time_point=self.follow_dmp_step,  # TODO: the time point need to be controlled
                                                                 )
-        # curr_ee_pos = self.sim.get_site_position('EEFee_pos')  # get the EEF's pos
-        # curr_ee_rot = self.sim.get_site_euler('EEFee_pos')  # get the EEF's euler
-        curr_ee_pos = np.copy(self.last_action_ee_pos)  # get the EEF's pos
-        curr_ee_rot = np.copy(self.last_action_ee_rot)  # get the EEF's euler
+        curr_ee_pos = self.sim.get_site_position('EEFee_pos')  # get the EEF's pos
+        curr_ee_rot = self.sim.get_site_euler('EEFee_pos')  # get the EEF's euler
         # self.last_action_ee_pos
         curr_ee_FT = self.sim.get_ft_sensor('Lforce', 'Ltorque') if self.dmp_force_enable is True else []
         curr_state = np.concatenate((curr_ee_pos, curr_ee_rot, curr_ee_FT))
@@ -579,8 +634,6 @@ class singleUR5e(MJRobot):
         # the limited action is set_dmps_traj (12-dim), which is used as the desired state for admittance controller
         des_pos = np.around(set_dmps_traj[0:3], self.truncation_num)  # hard code the getting pos, rot and force/torque
         des_euler = np.around(set_dmps_traj[3:6], self.truncation_num)
-        des_pos = np.clip(des_pos, self.ee_low, self.ee_high)  # limitation
-        des_euler = np.clip(des_euler, self.ee_rot_low, self.ee_rot_high)  # limitation
         des_ft = np.around(set_dmps_traj[6:12], self.truncation_num) if self.dmp_force_enable is True else np.zeros(6)
         # !get current force/toque sensor's data for lowpass fileter
         _curr_ft = np.around(self.sim.get_ft_sensor('Lforce', 'Ltorque'), self.truncation_num)
@@ -597,40 +650,87 @@ class singleUR5e(MJRobot):
         # print(pos_d)
         position_d = np.around(pos_d, self.truncation_num)
         rotation_d = np.around(rot_d, self.truncation_num)
-        position_d = np.clip(position_d, self.ee_low, self.ee_high)  # limitation
-        rotation_d = np.clip(rotation_d, self.ee_rot_low, self.ee_rot_high)  # limitation
         r_target_quat = Rotation.from_euler('xyz', rotation_d, degrees=False).as_quat()
         curr_qpos = np.array([self.sim.get_joint_angle(joint=self.joint_list[i]) for i in range(6)])  # get the qpos without finger
-
-        # ik_qpos = self.sim.inverse_kinematics_kdl(current_joint=curr_qpos,
-        #                                           target_position=position_d - self.sim.get_body_position('baseL'),
-        #                                           target_orientation=r_target_quat,)
-        ik_qpos = self.sim.inverse_kinematics_ikfast(target_position=position_d - self.sim.get_body_position('baseL'),
-                                                     target_orientation=r_target_quat,
-                                                     q_guess=curr_qpos)
-
-        if ik_qpos is None:
-            # print('can not get the qpos from ikfast, keep the raw qpos.')
-            ik_qpos = curr_qpos
-            self.last_action_ee_pos = curr_ee_pos
-            self.last_action_ee_rot = curr_ee_rot
-        else:
-            self.last_action_ee_pos = position_d
-            self.last_action_ee_rot = rotation_d
+        ik_qpos = self.sim.inverse_kinematics_kdl(current_joint=curr_qpos,
+                                                  target_position=position_d - self.sim.get_body_position('baseL'),
+                                                  target_orientation=r_target_quat,)
         ik_qpos = np.around(ik_qpos, self.truncation_num)
-
+        # print('current ee pos:', curr_ee_pos)
+        # print('desired ee pos:', position_d)
+        # print('current qpos', curr_qpos)
+        # print('ik qpos:', ik_qpos)
+        # print('------------')
+        # input()
         self.sim.control_joints(self.actuator_list[:-1], ik_qpos)
         self.follow_dmp_step += 1
-        self.truncated_num += 1
         if self.follow_dmp_step >= self.dmp_max_step:
             self.follow_dmp_step = self.dmp_max_step-1
-        if self.truncated_num > self.max_step_one_episode:  # hard code for early stop / get
-            truncated = True
-            self.truncated_num = 0
-            # print('early stop')
+            self.truncated_num += 1
+            if self.truncated_num > 100:  # hard code for early stop / get
+                truncated = True
+                self.truncated_num = 0
+                # print('early stop')
         self.sim.step()
         return truncated
-
+        # zeros_angle = [0, 0, 0, 0, 0, 0]
+        # self.sim.set_joint_qpos(self.joint_list[:-1], self.init_qpos)
+        # print(self.sim.get_body_position(self.L_eef) - self.sim.get_body_position('baseL'))
+        # # ---KDL Test---
+        # test_angle_zero = np.zeros(6)
+        # test_angle = np.deg2rad([45, 45, 45, 45, 45, 45])
+        # # test_angle = [0, 0, 0, 0, 0, -1.57]
+        # # test_angle = [0.3235, 0.7235,0.2235,0.4235,0.1235,0.5235]
+        # self.sim.set_joint_qpos(self.joint_list[:-1], self.init_qpos)
+        # qpos = np.array(test_angle)
+        # # print(np.array([self.sim.get_joint_angle(joint=self.joint_list[i]) for i in range(7)]))
+        # if self.env_index == 1:
+        #     base = self.sim.get_body_position('baseL')
+        #     sim_pos = self.sim.get_body_position('grab_obj')
+        #     sim_qua = np.roll(self.sim.get_body_quaternion('grab_obj'), -1)
+        #     sim_qua_test = [0.3535534, 0, 0.7071068, 0.6123724]
+        #     kdl_pos, kdl_qua = self.sim.forward_kinematics_kdl(self.init_qpos)
+        #     print(kdl_qua, Rotation.from_quat(kdl_qua).as_euler('xyz', degrees=True))
+        #     q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, sim_pos - base,
+        #                                             sim_qua)
+        #     print(q_inv)
+        #
+        #     # curr_joint_qpos = np.zeros(6)
+        #     # target_pos, target_quat = sim_pos, sim_qua
+        #     # start_pos, start_quat = self.sim.forward_kinematics_kdl(self.init_qpos)
+        #     # start_pos += base
+        #     # print(start_pos, start_quat)
+        #     # target_euler = Rotation.from_quat(target_quat).as_euler('xyz', degrees=False)
+        #     # start_euler = Rotation.from_quat(start_quat).as_euler('xyz', degrees=False)
+        #     # traj_num = 10
+        #     # traj_pos, traj_euler = np.zeros((3, traj_num)), np.zeros((3, traj_num))
+        #     # for i in range(3):
+        #     #     if target_pos[i] >= start_pos[i]:
+        #     #         traj_pos[i, :] = np.linspace(start_pos[i], target_pos[i], traj_num)
+        #     #         traj_euler[i, :] = np.linspace(start_euler[i], target_euler[i], traj_num)
+        #     #     else:
+        #     #         traj_pos[i, :] = np.linspace(target_pos[i], start_pos[i], traj_num)[::-1]
+        #     #         traj_euler[i, :] = np.linspace(target_euler[i], start_euler[i], traj_num)[::-1]
+        #     #
+        #     # q_inv = self.init_qpos
+        #     # for i in range(traj_num):
+        #     #     traj_quat = Rotation.from_euler('xyz', traj_euler[:, i], degrees=False).as_quat()
+        #     #     q_inv = self.sim.inverse_kinematics_kdl(q_inv, traj_pos[:, i] - base,
+        #     #                                             traj_quat)
+        #     #     # print(q_inv)
+        #     #     # print(traj_pos[:, i], traj_quat, start_pos, start_quat)
+        #     #     # print('---------')
+        #     #     # input()
+        #
+        #     print('-------------', '\n',
+        #         'sim pos:', sim_pos, '\n',
+        #         'sim qua:', sim_qua, '\n',
+        #         'kdl pos:', kdl_pos + base, '\n',
+        #         'kdl qua:', kdl_qua, '\n',
+        #         'kdl q inv:', q_inv,
+        #     )
+        #     input()
+        # # ---------------------
 
 
     def compute_reward(self):
@@ -664,35 +764,36 @@ class singleUR5e(MJRobot):
         curr_ee_rot = self.sim.get_site_euler('attachment_siteL')  # get the EEF's euler
         curr_ee_FT = self.sim.get_ft_sensor('Lforce', 'Ltorque') if self.dmp_force_enable is True else []
         curr_state = np.concatenate((curr_ee_pos, curr_ee_rot, curr_ee_FT))
-        rew_pos_traj = euclidean_distance(curr_state[:3], self.dmp_traj[:3, self.follow_dmp_step])
-        rew_rot_traj = cosine_distance(curr_state[3:6], self.dmp_traj[3:6, self.follow_dmp_step])
-        rew_traj = rew_pos_traj + rew_rot_traj
+        rew_traj = euclidean_distance(curr_state[:3], self.dmp_traj[:3, self.follow_dmp_step])
         # print('reward for pos:', rew_traj)
         # print('current pos:', curr_ee_pos, curr_ee_rot)
         # print('dmps traj:', self.dmp_traj[:, self.follow_dmp_step], self.follow_dmp_step)
         # input()
 
-        rew = -weights[0] * (rew_pos + rew_rot) + \
-              (-weights[1] * rew_traj)
+        # rew = -weights[0] * (rew_pos + rew_rot) + \
+        #       (-weights[1] * rew_traj)
 
-        # rew = -weights[0] * (rew_pos + rew_rot)
+        rew = -weights[0] * (rew_pos + rew_rot)
 
         self.reward_item += 1
-        if self.reward_item > 2000:  # log the reward
-            logging.info(f'reward each 2000 act: object posture distance is {rew_pos} and {rew_rot}, trajectory distance is {rew_traj}')
+        if self.reward_item > 500:
+            logging.info(f'reward each 500 act: object posture distance is {rew_pos} and  {rew_rot}, trajectory distance is {rew_traj}')
             self.reward_item = 0
         return rew
 
 
     def get_obs(self) -> np.ndarray:
         L_ee_pos = np.copy(self.sim.get_body_position(self.L_eef))
-        norm_L_ee_pos = _normalization(L_ee_pos, self.ee_high + self.sim.get_body_position('baseL'), self.ee_low + self.sim.get_body_position('baseL'), range_max=self.norm_max, range_min=self.norm_min)
+        norm_L_ee_pos = _normalization(L_ee_pos, self.arm_ee_max_pos, self.arm_ee_min_pos, range_max=self.norm_max, range_min=self.norm_min)
+        norm_L_ee_pos = np.clip(norm_L_ee_pos, -1, 1)
         L_ee_quat = np.copy(self.sim.get_body_quaternion(self.L_eef))
         norm_L_ee_quat = _normalization(L_ee_quat, _max=1, _min=-1, range_max=self.norm_max, range_min=self.norm_min)  # hard code for normalization of quaternion
         L_ee_vels = np.copy(self.sim.get_body_velocity(self.L_eef))
         norm_L_ee_vels = _normalization(L_ee_vels, _max=1, _min=-1, range_max=self.norm_max, range_min=self.norm_min)  # hard code for normalization of velocity
+        norm_L_ee_vels = np.clip(norm_L_ee_vels, -1, 1)
         L_FT_sensor = self.sim.get_ft_sensor('Lforce', 'Ltorque')
         norm_L_FT_snesor = _normalization(L_FT_sensor, _max=50, _min=-50, range_max=self.norm_max, range_min=self.norm_min)  # hard code for normalization of FT sensor
+        norm_L_FT_snesor = np.clip(norm_L_FT_snesor, -1, 1)
         # obs = np.concatenate([norm_L_ee_pos, norm_L_ee_quat, norm_L_ee_vels, norm_L_FT_snesor, self.dmp_w])  # put the DMPs weights to observation space
         obs = np.concatenate([norm_L_ee_pos, norm_L_ee_quat, norm_L_ee_vels, norm_L_FT_snesor, [self.dmp_x]])
         return obs
@@ -703,7 +804,6 @@ class singleUR5e(MJRobot):
         Returns:
             None
         """
-        logging.info('reset')
         self.goal = target_goal
         self.env_index = index
         self.sim.set_forward()
@@ -827,9 +927,7 @@ class singleUR5e(MJRobot):
         # input()
         self.target_state = np.concatenate((target_pos, target_rot, target_forcetorque))
         demo_ee_pos, demo_ee_rot, demo_ee_posvel, demo_ee_rotvel, demo_ee_quat, demo_eeft = interp_preprocessed_data_with_vel(
-            data_path=data_path,
-            ex_length=self.dmp_max_step,
-        )
+            data_path)
         if self.dmp_force_enable is True:
             demonstration_trajs = np.concatenate((demo_ee_pos, demo_ee_rot, demo_eeft), axis=0)
         else:

@@ -1,0 +1,6 @@
+task_name: 'Chef-v0'
+render: False
+log_path: '/home/yi/project_ghent/chef/logs/'  # the root of tensorboard logging path
+model_path: './models/'
+alg: 'PPO'  # the algorithm used
+normalization_range: [-1, 1]
