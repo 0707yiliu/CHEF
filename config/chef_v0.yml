@@ -1,5 +1,5 @@
-task_name: 'Reach-v0'
-render: False
+task_name: 'Chef-v0'
+render: True
 log_path: './logs/'  # the root of tensorboard logging path
 model_path: './models/'
 alg: 'PPO'  # the algorithm used

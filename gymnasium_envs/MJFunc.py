@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from typing import Any, Dict, Iterator, Optional
 import os
 
-import gymnasium_envs.KDLFunc as KDL_func
+# import gymnasium_envs.KDLFunc as KDL_func
 from ur_ikfast import ur_kinematics
 
 from scipy.spatial.transform import Rotation
@@ -51,7 +51,7 @@ class MJFunc:
 
         # hard code for urdf-kdl, can be embodied into yaml file
         kdl_urdf_file = self.root_path + 'ur5e_schunk.urdf'
-        self.kdl_solver = KDL_func.arm_kdl(kdl_urdf_file)
+        # self.kdl_solver = KDL_func.arm_kdl(kdl_urdf_file)
         # hard code for ikfast
         self.ur5e_arm = ur_kinematics.URKinematics('ur5e')
 
@@ -169,16 +169,16 @@ class MJFunc:
     #     ee_pos = self.urxkdl.forward(qpos=qpos)
     #     return ee_pos
 
-    def inverse_kinematics_kdl(self,
-                               current_joint: np.ndarray,
-                               target_position: np.ndarray,
-                               target_orientation: np.ndarray) -> np.ndarray:
-        qpos = self.kdl_solver.inverse(current_joint, target_position, target_orientation)
-        return qpos
+    # def inverse_kinematics_kdl(self,
+    #                            current_joint: np.ndarray,
+    #                            target_position: np.ndarray,
+    #                            target_orientation: np.ndarray) -> np.ndarray:
+    #     qpos = self.kdl_solver.inverse(current_joint, target_position, target_orientation)
+    #     return qpos
 
-    def forward_kinematics_kdl(self, qpos) -> np.ndarray:
-        ee_pos, ee_quat = self.kdl_solver.forward(qpos=qpos)
-        return ee_pos, ee_quat
+    # def forward_kinematics_kdl(self, qpos) -> np.ndarray:
+    #     ee_pos, ee_quat = self.kdl_solver.forward(qpos=qpos)
+    #     return ee_pos, ee_quat
 
     def inverse_kinematics_ikfast(self, target_position, target_orientation, q_guess=np.zeros(6)):
         pose_quat = np.concatenate([target_position, target_orientation]) # xyz, rx, ry ,rz, w

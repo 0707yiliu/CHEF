@@ -227,7 +227,7 @@ class ReachsingleUR5e(MJRobot):
         # print('ik qpos:', ik_qpos)
         # print('------------')
         # input()
-        # ik_qpos = self.init_qpos
+        ik_qpos = self.init_qpos
         # init ee pos [-0.366      -0.22391024  1.45015816]
         self.sim.control_joints(self.actuator_list[:-1], ik_qpos)
         self.follow_dmp_step += 1
@@ -401,11 +401,11 @@ class ReachsingleUR5e(MJRobot):
             self.sim.set_joint_qpos(self.joint_list[:-1], qpos_random)  # set the joint randomly
             self.sim.control_joints(self.actuator_list[:-1], qpos_random)
             # testing in the reach env for dmps
-            start_pos, start_quat = self.sim.forward_kinematics_kdl(qpos_random)  # get the reset pos and rot
+            # start_pos, start_quat = self.sim.forward_kinematics_kdl(qpos_random)  # get the reset pos and rot
             self.last_action_ee_pos, last_action_ee_rot = self.sim.forward_kinematics_ikfast(qpos_random)
             self.last_action_ee_rot = Rotation.from_quat(last_action_ee_rot).as_euler('xyz', degrees=False)
             self.last_action_ee_pos += base
-            start_rot = Rotation.from_quat(start_quat).as_euler('xyz', degrees=False)
+            # start_rot = Rotation.from_quat(start_quat).as_euler('xyz', degrees=False)
             target_rot = np.deg2rad(np.random.uniform([-90, 0, -180], [-90, 0, 180]))
             data_path = local_path + '../../datasets/reach/'
             data_names = os.listdir(data_path)
@@ -554,6 +554,10 @@ class singleUR5e(MJRobot):
         self.env_index = -1
         self.arm_ee_max_pos = np.array([-0.5 + 1, 1, 0.816 + 1.1])
         self.arm_ee_min_pos = np.array([-0.5 - 1, -1, 0.816 - 1.1])
+        self.ee_high = np.array([0.2, 0.7, 0.8])
+        self.ee_low = np.array([-0.2, 0.1, 0.2])
+        self.ee_rot_high = np.deg2rad([-90, 10, 30])
+        self.ee_rot_low = np.deg2rad([-180, -10, -30])
         self.goal = np.zeros(3)
         # DMPs configuration
         self.dmp_x = 0
@@ -563,7 +567,7 @@ class singleUR5e(MJRobot):
         self.follow_dmp_step = 0  # the step of following DMPs trajectory
         self.dmp_max_step = 2000  # hard code, the DMPs length
         self.ee_pos_increment_range = np.ones(3) * 0.01  # the maximum action step for EEF's pos, for limit the DMPs' random weight
-        self.ee_rot_increment_range = np.ones(3) * np.deg2rad(10)  # the maximum action step for EEF's rot, for limit the DMPs' random weight
+        self.ee_rot_increment_range = np.ones(3) * np.deg2rad(5)  # the maximum action step for EEF's rot, for limit the DMPs' random weight
         self.ee_force_increment_range = np.ones(6) * 10 if dmps_force_enable is True else []
         self.ee_increment_range = np.concatenate((self.ee_pos_increment_range, self.ee_rot_increment_range, self.ee_force_increment_range))
         # admittance controller configuration, hard code of configuration, using critical damping
@@ -582,7 +586,7 @@ class singleUR5e(MJRobot):
             action_space=action_space,
             joint_index=np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]),
             joint_force=np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]),
-            init_qpos=np.deg2rad([0, -90, 90, -90, -90, 0]),
+            init_qpos=np.deg2rad([90, -135, 90, -90, -90, 0]),
             joint_list=["shoulder_pan_jointL", "shoulder_lift_jointL", "elbow_jointL", "wrist_1_jointL", "wrist_2_jointL", "wrist_3_jointL", "finger_joint1"],
             actuator_list=['shoulder_panL', 'shoulder_liftL', 'elbowL', 'wrist_1L', 'wrist_2L', 'wrist_3L', 'fingersL'],
             sensor_list=['magnetic_1', 'magnetic_2', 'magnetic_3', 'magnetic_4']
@@ -608,8 +612,9 @@ class singleUR5e(MJRobot):
                                                                 goal=self.target_state,
                                                                 time_point=self.follow_dmp_step,  # TODO: the time point need to be controlled
                                                                 )
-        curr_ee_pos = self.sim.get_site_position('attachment_siteL')  # get the EEF's pos
-        curr_ee_rot = self.sim.get_site_euler('attachment_siteL')  # get the EEF's euler
+        curr_ee_pos = self.sim.get_site_position('EEFee_pos')  # get the EEF's pos
+        curr_ee_rot = self.sim.get_site_euler('EEFee_pos')  # get the EEF's euler
+        # self.last_action_ee_pos
         curr_ee_FT = self.sim.get_ft_sensor('Lforce', 'Ltorque') if self.dmp_force_enable is True else []
         curr_state = np.concatenate((curr_ee_pos, curr_ee_rot, curr_ee_FT))
         _error_dmps = set_dmps_traj - curr_state
@@ -816,99 +821,103 @@ class singleUR5e(MJRobot):
             self.sim.set_joint_qpos(self.joint_list[:-1], qpos_random)  # set the joint randomly
             self.sim.control_joints(self.actuator_list[:-1], qpos_random)
             # testing in the reach env for dmps
-            start_pos, start_quat = self.sim.forward_kinematics_kdl(qpos_random)  # get the reset pos and rot
-            start_rot = Rotation.from_quat(start_quat).as_euler('xyz', degrees=False)
-            target_rot = np.deg2rad(np.random.uniform([90, 0, -180], [90, 0, 180]))
+            # start_pos, start_quat = self.sim.forward_kinematics_kdl(qpos_random)  # get the reset pos and rot
+            self.last_action_ee_pos, last_action_ee_rot = self.sim.forward_kinematics_ikfast(self.init_qpos)
+            self.last_action_ee_pos += base
+            start_pos = np.copy(self.last_action_ee_pos)
+            self.last_action_ee_rot = Rotation.from_quat(last_action_ee_rot).as_euler('xyz', degrees=False)
+            start_rot = np.copy(self.last_action_ee_rot)
+            # start_rot = Rotation.from_quat(start_quat).as_euler('xyz', degrees=False)
+            target_rot = np.deg2rad(np.random.uniform([-180, -10, -30], [-90, 10, 30]))
             data_path = local_path + '../../datasets/reach/'
             data_names = os.listdir(data_path)
             data_path = data_path + random.choice(data_names)
 
 
-        elif self.env_index == 1:  # flip skill, use IK to generate one posture, fix the Z-rotation face to the ground
-            ee_noise = np.random.uniform(np.ones(3) * -0.02, np.ones(3) * 0.02)
-            sim_euler = np.random.uniform(np.deg2rad([-10, -10, -180]), np.deg2rad([10, 10, 180]))
-            sim_quat = Rotation.from_euler('xyz', sim_euler, degrees=False).as_quat()  # rotation convertor
-            q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, target_goal - base + ee_noise, sim_quat)
-            inv_done = False
-            sample_times = 0
-
-            data_path = local_path + '../../datasets/flip/'
-            data_names = os.listdir(data_path)
-            data_path = data_path + random.choice(data_names)
-
-            while inv_done is False:
-                if q_inv.max() > np.pi or q_inv.min() < -np.pi:
-                    sample_times += 1
-                    sim_euler = np.random.uniform(np.deg2rad([-10, -10, -180]), np.deg2rad([10, 10, 180]))
-                    sim_quat = Rotation.from_euler('xyz', sim_euler, degrees=False).as_quat()  # rotation convertor
-                    q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, target_goal - base + ee_noise, sim_quat)
-                    if sample_times > 500:
-                        _reset_goal = True
-                        # print(target_goal)
-                        # print('break')
-                        break
-                else:
-                    inv_done = True
-                    # print(q_inv, sim_euler, target_goal - base)
-                    self.sim.set_joint_qpos(self.joint_list[:-1], q_inv)
-                    self.sim.control_joints(self.actuator_list[:-1], q_inv)
-
-                    # testing in the reach env for dmps
-                    start_pos, start_quat = self.sim.forward_kinematics_kdl(q_inv)  # get the reset pos and rot
-                    start_rot = Rotation.from_quat(start_quat).as_euler('xyz', degrees=False)
-                    target_rot = sim_euler
-                    target_rot[0] = 90
-
-
-
-
-        elif self.env_index == 2:  # pouring skill, set the position of the ee upon the round of fixed area
-            ee_noise = np.random.uniform(np.ones(3) * -0.02, np.ones(3) * 0.02)
-            sim_euler = np.random.uniform(np.deg2rad([-90, -5, -180]), np.deg2rad([-80, 5, 180]))
-            sim_quat = Rotation.from_euler('xyz', sim_euler, degrees=False).as_quat()  # rotation convertor
-            target_goal[-1] += 0.3
-            q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, target_goal - base + ee_noise, sim_quat)
-            inv_done = False
-            sample_times = 0
-
-            data_path = local_path + '../../datasets/pour/'
-            data_names = os.listdir(data_path)
-            data_path = data_path + random.choice(data_names)
-
-            while inv_done is False:
-                if q_inv.max() > np.pi or q_inv.min() < -np.pi:
-                    sim_euler = np.random.uniform(np.deg2rad([-90, -5, -180]), np.deg2rad([-80, 5, 180]))
-                    # sim_euler = np.random.uniform(np.deg2rad([-95, 0, 0]), np.deg2rad([-85, 10, 10]))
-                    sim_quat = Rotation.from_euler('xyz', sim_euler, degrees=False).as_quat()  # rotation convertor
-                    q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, target_goal - base + ee_noise, sim_quat)
-                    # print('change')
-                    sample_times += 1
-                    if sample_times > 500:
-                        _reset_goal = True
-                        # print(target_goal)
-                        # print('break')
-                        break
-                else:
-                    inv_done = True
-                    # print(q_inv, sim_euler, target_goal - base)
-                    self.sim.set_joint_qpos(self.joint_list[:-1], q_inv)
-                    self.sim.control_joints(self.actuator_list[:-1], q_inv)
-                    self.sim.set_forward()
-                    cube_pos = self.sim.get_body_position('bowl')
-                    cube_pos[-1] += 0.1
-                    self.sim.set_mocap_pos(mocap='pourcube', pos=cube_pos)
-
-                    # testing in the reach env for dmps
-                    start_pos, start_quat = self.sim.forward_kinematics_kdl(q_inv)  # get the reset pos and rot
-                    start_rot = Rotation.from_quat(start_quat).as_euler('xyz', degrees=False)
-                    target_rot = sim_euler
-                    target_rot[0] += 180
-
+        # elif self.env_index == 1:  # flip skill, use IK to generate one posture, fix the Z-rotation face to the ground
+        #     ee_noise = np.random.uniform(np.ones(3) * -0.02, np.ones(3) * 0.02)
+        #     sim_euler = np.random.uniform(np.deg2rad([-10, -10, -180]), np.deg2rad([10, 10, 180]))
+        #     sim_quat = Rotation.from_euler('xyz', sim_euler, degrees=False).as_quat()  # rotation convertor
+        #     q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, target_goal - base + ee_noise, sim_quat)
+        #     inv_done = False
+        #     sample_times = 0
+        #
+        #     data_path = local_path + '../../datasets/flip/'
+        #     data_names = os.listdir(data_path)
+        #     data_path = data_path + random.choice(data_names)
+        #
+        #     while inv_done is False:
+        #         if q_inv.max() > np.pi or q_inv.min() < -np.pi:
+        #             sample_times += 1
+        #             sim_euler = np.random.uniform(np.deg2rad([-10, -10, -180]), np.deg2rad([10, 10, 180]))
+        #             sim_quat = Rotation.from_euler('xyz', sim_euler, degrees=False).as_quat()  # rotation convertor
+        #             q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, target_goal - base + ee_noise, sim_quat)
+        #             if sample_times > 500:
+        #                 _reset_goal = True
+        #                 # print(target_goal)
+        #                 # print('break')
+        #                 break
+        #         else:
+        #             inv_done = True
+        #             # print(q_inv, sim_euler, target_goal - base)
+        #             self.sim.set_joint_qpos(self.joint_list[:-1], q_inv)
+        #             self.sim.control_joints(self.actuator_list[:-1], q_inv)
+        #
+        #             # testing in the reach env for dmps
+        #             start_pos, start_quat = self.sim.forward_kinematics_kdl(q_inv)  # get the reset pos and rot
+        #             start_rot = Rotation.from_quat(start_quat).as_euler('xyz', degrees=False)
+        #             target_rot = sim_euler
+        #             target_rot[0] = 90
+        #
+        #
+        #
+        #
+        # elif self.env_index == 2:  # pouring skill, set the position of the ee upon the round of fixed area
+        #     ee_noise = np.random.uniform(np.ones(3) * -0.02, np.ones(3) * 0.02)
+        #     sim_euler = np.random.uniform(np.deg2rad([-90, -5, -180]), np.deg2rad([-80, 5, 180]))
+        #     sim_quat = Rotation.from_euler('xyz', sim_euler, degrees=False).as_quat()  # rotation convertor
+        #     target_goal[-1] += 0.3
+        #     q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, target_goal - base + ee_noise, sim_quat)
+        #     inv_done = False
+        #     sample_times = 0
+        #
+        #     data_path = local_path + '../../datasets/pour/'
+        #     data_names = os.listdir(data_path)
+        #     data_path = data_path + random.choice(data_names)
+        #
+        #     while inv_done is False:
+        #         if q_inv.max() > np.pi or q_inv.min() < -np.pi:
+        #             sim_euler = np.random.uniform(np.deg2rad([-90, -5, -180]), np.deg2rad([-80, 5, 180]))
+        #             # sim_euler = np.random.uniform(np.deg2rad([-95, 0, 0]), np.deg2rad([-85, 10, 10]))
+        #             sim_quat = Rotation.from_euler('xyz', sim_euler, degrees=False).as_quat()  # rotation convertor
+        #             q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, target_goal - base + ee_noise, sim_quat)
+        #             # print('change')
+        #             sample_times += 1
+        #             if sample_times > 500:
+        #                 _reset_goal = True
+        #                 # print(target_goal)
+        #                 # print('break')
+        #                 break
+        #         else:
+        #             inv_done = True
+        #             # print(q_inv, sim_euler, target_goal - base)
+        #             self.sim.set_joint_qpos(self.joint_list[:-1], q_inv)
+        #             self.sim.control_joints(self.actuator_list[:-1], q_inv)
+        #             self.sim.set_forward()
+        #             cube_pos = self.sim.get_body_position('bowl')
+        #             cube_pos[-1] += 0.1
+        #             self.sim.set_mocap_pos(mocap='pourcube', pos=cube_pos)
+        #
+        #             # testing in the reach env for dmps
+        #             start_pos, start_quat = self.sim.forward_kinematics_kdl(q_inv)  # get the reset pos and rot
+        #             start_rot = Rotation.from_quat(start_quat).as_euler('xyz', degrees=False)
+        #             target_rot = sim_euler
+        #             target_rot[0] += 180
 
 
         # the general part of DMPs' parameters
         # print('start pos:', start_pos, 'base:', base)
-        start_pos = start_pos + base
+        # start_pos = start_pos + base
         target_pos = target_goal  # get the reset target goal for dmp
         start_vels, target_vels = np.zeros(6), np.zeros(6)  # do not use velocity now
         start_forcetorque = np.zeros(6) if self.dmp_force_enable is True else []
