@@ -24,7 +24,7 @@ env = gym.make(
     normalization_range=config['normalization_range'],
 )
 log_path = config['log_path']
-model_path = log_path + 'eval/Reach-v0-PPO-20241211172320/best_model.zip'
+model_path = log_path + 'eval/Chef-v0-PPO-20241212140055/best_model.zip'
 if config['alg'] == 'PPO':
     model = PPO.load(model_path, env=env)
 elif config['alg'] == 'TD3':

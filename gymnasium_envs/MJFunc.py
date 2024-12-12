@@ -189,6 +189,42 @@ class MJFunc:
         pose_quat = self.ur5e_arm.forward(qpos)
         return pose_quat[:3], pose_quat[3:] # xyz,  rx, ry ,rz, w
 
+    def add_visual_capsule(self, scene, point1, point2, radius, rgba):
+        """Adds one capsule to an mjvScene."""
+        # TODO: useless now, trying to render new geom in mujoco
+        if scene.ngeom >= scene.maxgeom:
+            return
+        scene.ngeom += 1  # increment ngeom
+        # initialise a new capsule, add it to the scene using mjv_connector
+        mujoco.mjv_initGeom(scene.geoms[scene.ngeom - 1],
+                            mujoco.mjtGeom.mjGEOM_CAPSULE, np.zeros(3),
+                            np.zeros(3), np.zeros(9), rgba.astype(np.float32))
+        mujoco.mjv_connector(scene.geoms[scene.ngeom - 1],
+                             mujoco.mjtGeom.mjGEOM_CAPSULE, radius,
+                             point1, point2)
+
+    def modify_scene(self, traj):
+        """Draw position trace, speed modifies width and colors."""
+        # TODO: useless now, trying to render new geom in mujoco
+        scn = mujoco.Renderer(self.model).scene
+        traj_len = traj.shape[1]
+        sample_rate = 100
+        sample_index = np.linspace(0, traj_len, int(traj_len/sample_rate), dtype=int)
+        if len(sample_index) > 1:
+            for i in range(len(sample_index) - 1):
+                rgba = np.array((np.clip(0.5, 0, 1),
+                                 np.clip(0.5, 0, 1),
+                                 .5, 1.))
+                radius = .003
+                point1 = traj[:, sample_index[i]]
+
+                point2 = traj[:, sample_index[i] + 1]
+                print(point2)
+                self.add_visual_capsule(scn, point1, point2, radius, rgba)
+                # mujoco.Renderer(self.model).update_scene(self.data)
+        # mujoco.Renderer(self.model).update_scene(self.data)
+        # print(traj[:, 0])
+
 
     @contextmanager
     def no_rendering(self) -> Iterator[None]:

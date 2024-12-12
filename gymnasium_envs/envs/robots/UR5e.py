@@ -12,6 +12,8 @@ from gymnasium_envs.admittance_controller.core import FT_controller as AdmContro
 import os
 import logging
 import yaml
+import matplotlib.pyplot as plt
+
 logging.basicConfig(format='%(asctime)s - %(levelname)s: %(message)s',
                     level=logging.DEBUG)
 
@@ -715,9 +717,7 @@ class singleUR5e(MJRobot):
         target_rot = np.zeros(3)
         base = self.sim.get_body_position('baseL')
         if self.env_index == 0:  # reach skill,
-            qpos_random = np.deg2rad(np.random.uniform(-np.ones(6) * 60, np.ones(6) * 60))
-            qpos_random[0] = np.deg2rad(np.random.uniform(-180, 180))
-            qpos_random[1] -= 1.57  # make the arm stand upright on the table
+            qpos_random = self.init_qpos
             self.sim.set_joint_qpos(self.joint_list[:-1], qpos_random)  # set the joint randomly
             self.sim.control_joints(self.actuator_list[:-1], qpos_random)
             # testing in the reach env for dmps
@@ -844,6 +844,17 @@ class singleUR5e(MJRobot):
                                                   initial=self.start_state,
                                                   goal=self.target_state,
                                                   )  # get output of dmps, do not need the gradient
+        # draw demo trajectory
+        self.sim.modify_scene(self.dmp_traj[:3, :])
+        print('--', target_pos, self.goal, start_pos)
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.plot(demonstration_trajs[0, :], demonstration_trajs[1, :], demonstration_trajs[2, :])
+        ax.plot(self.dmp_traj[0, :], self.dmp_traj[1, :], self.dmp_traj[2, :])
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+        plt.show()
         # simulator forward
         self.sim.set_forward()
         return _reset_goal
