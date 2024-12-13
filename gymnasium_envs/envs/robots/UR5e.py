@@ -540,8 +540,8 @@ class singleUR5e(MJRobot):
         action = action.copy()
         act_len = len(action)
 
-        increment_ee_pos = action[:3] * 0.03
-        increment_ee_rot = action[3:] * np.deg2rad(5)
+        increment_ee_pos = action[:3] * 0.05
+        increment_ee_rot = action[3:] * np.deg2rad(10)
 
         # the limited action is set_dmps_traj (12-dim), which is used as the desired state for admittance controller
         des_pos = np.around(self.last_action_ee_pos + increment_ee_pos,
@@ -605,7 +605,7 @@ class singleUR5e(MJRobot):
         Returns:
             Float type distance for goal task
         """
-        weights = [1, 0.1]  # the weight for all reward factors, index 0: pos and rot err, index 1: trajectory err
+        weights = [1, 0.05]  # the weight for all reward factors, index 0: pos and rot err, index 1: trajectory err
         # calculater pos and rot err
         rew_rot = 0  # some envs do not need rotation reward
         if self.env_index == 2:  # pour skill, calculate the distance between cube and the area
@@ -627,8 +627,8 @@ class singleUR5e(MJRobot):
         curr_ee_rot = self.sim.get_site_euler('attachment_siteL')  # get the EEF's euler
         curr_ee_FT = self.sim.get_ft_sensor('Lforce', 'Ltorque') if self.dmp_force_enable is True else []
         curr_state = np.concatenate((curr_ee_pos, curr_ee_rot, curr_ee_FT))
-        rew_pos_traj = euclidean_distance(curr_state[:3], self.dmp_traj[:3, self.follow_dmp_step])
-        rew_rot_traj = cosine_distance(curr_state[3:6], self.dmp_traj[3:6, self.follow_dmp_step])
+        rew_pos_traj = euclidean_distance(curr_state[:3], self.dmp_traj[:3, self._temporal])
+        rew_rot_traj = cosine_distance(curr_state[3:6], self.dmp_traj[3:6, self._temporal])
         rew_traj = rew_pos_traj + rew_rot_traj
         # print('reward for pos:', rew_traj)
         # print('current pos:', curr_ee_pos, curr_ee_rot)
@@ -637,8 +637,6 @@ class singleUR5e(MJRobot):
 
         rew = (-weights[0] * (rew_pos + rew_rot)) * (self._temporal / self.max_step_one_episode) + \
               (-weights[1] * rew_traj)
-
-        # rew = -weights[0] * (rew_pos + rew_rot)
 
         self.reward_item += 1
         if self.reward_item > 2000:  # log the reward
