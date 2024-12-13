@@ -52,7 +52,7 @@ callback = CallbackList([eval_callback, checkpoint_callback])
 logs_file = config['log_path'] + 'tensorboards/' + config['task_name'] + '-' + config['alg'] + '-' + currenttime
 check_env(env)
 policy_kwargs = dict(activation_fn=th.nn.ReLU,
-                     net_arch=dict(pi=[256, 256], vf=[256, 256]))
+                     net_arch=dict(pi=[64, 128, 64], vf=[64, 128, 64]))
 if config['alg'] == 'TD3':
     print('PPO algorithm training.')
     model = TD3(

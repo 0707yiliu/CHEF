@@ -104,6 +104,7 @@ class RobotTaskEnv(gym.Env):
         self.task = task
         self.render = render
         self.action_space = self.robot.action_space
+        self.reset()
         obs = self._get_obs()
         _common_obs_shape = obs['common_observation'].shape[0]
         # _current_state_shape = obs['current_state'].shape[0]

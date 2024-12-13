@@ -17,7 +17,8 @@ kitchen_tasks_chain: {'flip_bottle':['reach', 'pick', 'reach', 'flip', 'reach', 
 # the chain formed by skills, mainly used in robot part for DMPs
 demonstration_trajectories_paths: ''  # loading demonstration trajectory for different skills
 demonstration_length: 2000  # the length of the demonstration, uniformed
-DMPs_weights_num: 10
+DMPs_weights_num: 100
+max_step_one_episode: 2000
 ratio_demonstration2action: 3 # the ratio between the length of demonstration and length of the action step echo epoch
 # robot config
 ee_pos_limitation_low: [-0.2, 0.1, 0.2]
