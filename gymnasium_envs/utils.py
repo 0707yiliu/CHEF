@@ -4,6 +4,27 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation
 from scipy.spatial.distance import pdist
+from typing import Callable
+
+def linear_schedule(initial_value: float, lowest_value: float = 0.000) -> Callable[[float], float]:
+    """
+    Linear learning rate schedule.
+
+    :param initial_value: Initial learning rate.
+    :return: schedule that computes
+      current learning rate depending on remaining progress
+    """
+
+    def func(progress_remaining: float) -> float:
+        """
+        Progress will decrease from 1 (beginning) to 0.
+
+        :param progress_remaining:
+        :return: current learning rate
+        """
+        return progress_remaining * initial_value + lowest_value
+
+    return func
 
 def lowpass_filter(last, cur, ratio=0.7):
     new = ratio * last + (1 - ratio) * cur
@@ -61,6 +82,7 @@ def euclidean_distance(a, b):
 
 
 def cosine_distance(a, b):
+    # print(a.shape, b.shape)
     assert len(a) == len(b)
     dis = pdist(np.vstack([a, b]), 'cosine')[0]
     return dis

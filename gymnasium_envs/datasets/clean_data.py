@@ -34,6 +34,7 @@ for i in range(len(data_names)):
         data_path=path + data_names[i],
         ex_length=2000,
     )
+    print(data_names[i])
     demo_ee_pos_list = demo_ee_pos.T.tolist()
     # print(demo_ee_pos_list)
     pcd = open3d.geometry.PointCloud()

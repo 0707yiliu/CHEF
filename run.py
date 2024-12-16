@@ -23,21 +23,26 @@ env = gym.make(
     kitchen_tasks_chain=config['kitchen_tasks_chain'],
     normalization_range=config['normalization_range'],
 )
-log_path = config['log_path']
-model_path = log_path + 'eval/Chef-v0-PPO-20241213180755/best_model.zip'
-if config['alg'] == 'PPO':
+log_path = config['alg']['log_path']
+model_path = log_path + 'eval/Chef-v0-PPO-20241216172720/best_model.zip'
+# model_path = './models/PPO/Chef-v0-20241216093812.pkl'
+if config['alg']['name'] == 'PPO':
     model = PPO.load(model_path, env=env)
-elif config['alg'] == 'TD3':
+elif config['alg']['name'] == 'TD3':
     model = TD3.load(model_path, env=env)
 obs, _ = env.reset()
 i = 0
-while i < 10000:
+while True:
     action, _state = model.predict(obs, deterministic=True)
     obs, reward, done, _, info = env.step(action)
+    # print(action)
     if done:
         env.reset()
     # obs_record = np.r_[obs_record, [obs]]
     i += 1
+    if i > 4000:
+        i = 0
+        env.reset()
     # print(i)
 
 # t = 0

@@ -8,9 +8,11 @@ from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.callbacks import CallbackList, BaseCallback, CheckpointCallback, EvalCallback
 import yaml
 import torch as th
+from gymnasium_envs.utils import linear_schedule
 
 with open('config/chef_v0.yml', 'r', encoding='utf-8') as cfg:
     config = yaml.load(cfg, Loader=yaml.FullLoader)
+
 
 currenttime = int(time.time())
 currenttime = time.strftime("%Y%m%d%H%M%S", time.localtime(currenttime))
@@ -32,60 +34,58 @@ env = Monitor(env)
 
 eval_callback = EvalCallback(
     env,
-    best_model_save_path=config['log_path'] + 'eval/' + config['task_name'] + '-' + config['alg'] + '-' + currenttime + '/',
-    log_path=config['log_path'] + 'tensorboards/' + config['task_name'] + '-' + config['alg'] + '-' + currenttime + '/',
-    eval_freq=20000,
+    best_model_save_path=config['alg']['log_path'] + 'eval/' + config['task_name'] + '-' + config['alg']['name'] + '-' + currenttime + '/',
+    log_path=config['alg']['log_path'] + 'tensorboards/' + config['task_name'] + '-' + config['alg']['name'] + '-' + currenttime + '/',
+    eval_freq=config['alg']['eval_freq'],
     deterministic=True,
     render=False,
 )
 print('saveing best model in training.')
 checkpoint_callback = CheckpointCallback(
-                save_freq=200000,
-                save_path=config['log_path'] + 'checkpoint/' + config['task_name'] + '-' + config['alg'] + '-' + currenttime + '/',
-                name_prefix=config['task_name'] + '-' + config['alg'] + '-' + currenttime,
+                save_freq=config['alg']['checkpoint_freq'],
+                save_path=config['alg']['log_path'] + 'checkpoint/' + config['task_name'] + '-' + config['alg']['name'] + '-' + currenttime + '/',
+                name_prefix=config['task_name'] + '-' + config['alg']['name'] + '-' + currenttime,
                 save_replay_buffer=True,
                 save_vecnormalize=True,
             )
 print('saveing checkpoint model in training.')
 callback = CallbackList([eval_callback, checkpoint_callback])
 
-logs_file = config['log_path'] + 'tensorboards/' + config['task_name'] + '-' + config['alg'] + '-' + currenttime
+logs_file = config['alg']['log_path'] + 'tensorboards/' + config['task_name'] + '-' + config['alg']['name'] + '-' + currenttime
 check_env(env)
 policy_kwargs = dict(activation_fn=th.nn.ReLU,
-                     net_arch=dict(pi=[64, 128, 64], vf=[64, 128, 64]))
-if config['alg'] == 'TD3':
+                     net_arch=dict(pi=config['alg']['latent_networks'], vf=config['alg']['latent_networks']))
+if config['alg']['name'] == 'TD3':
     print('PPO algorithm training.')
     model = TD3(
-
-        policy='MultiInputPolicy',
+        policy='MlpPolicy',
         env=env,
         verbose=1,
         learning_rate=0.0003,
-
         batch_size=64,
-
         tensorboard_log=logs_file,
     )
-elif config['alg'] == 'PPO':
+elif config['alg']['name'] == 'PPO':
     model = PPO(
         policy_kwargs=policy_kwargs,
-        policy='MultiInputPolicy',
+        policy=config['alg']['policy'],
         env=env,
         verbose=1,
-        learning_rate=0.0003,
-        ent_coef=0.0016,
-        n_steps=2048,
-        batch_size=64,
-        n_epochs=10,
+        clip_range=linear_schedule(initial_value=config['alg']['clip_range'][1], lowest_value=config['alg']['clip_range'][0]),
+        learning_rate=linear_schedule(initial_value=config['alg']['learning_rate']),
+        ent_coef=config['alg']['ent_coef'],
+        n_steps=config['alg']['n_steps'],
+        batch_size=config['alg']['batch_size'],
+        n_epochs=config['alg']['n_epochs'],
         tensorboard_log=logs_file,
     )
 model.learn(
-    total_timesteps=3000000,
-    tb_log_name=config['alg'] + '-' + currenttime,
+    total_timesteps=config['alg']['total_timesteps'],
+    tb_log_name=config['alg']['name'] + '-' + currenttime,
     callback=callback,
 )
 print('training done')
-model.save(config['model_path'] + config['alg'] + '/' + config['task_name'] + '-' + currenttime + '.pkl')
+model.save(config['alg']['model_path'] + config['alg']['name'] + '/' + config['task_name'] + '-' + currenttime + '.pkl')
 
 #
 # env.reset()

@@ -9,7 +9,7 @@ from scipy.spatial.transform import Rotation
 import yaml
 
 class KitchenMultiTask(Task):
-    with open('config/tasks/chef_v0.yml', 'r', encoding='utf-8') as cfg:
+    with open('config/chef_v0.yml', 'r', encoding='utf-8') as cfg:
         config = yaml.load(cfg, Loader=yaml.FullLoader)
     def __init__(self,
                  sim,
@@ -36,13 +36,15 @@ class KitchenMultiTask(Task):
         self.curr_skill = self.specified_skills[0]
         self.last_skill = self.curr_skill
 
-        #  the goal of the target task
-        self.goal = self._sample_goal()
         # self.reset_goal_max_pos = [-0.5 + 0.4, -0.1, 1.15]  # hard code the reset goal, related to the circle_sample func
         # self.reset_goal_min_pos = [-0.5 - 0.4, -0.6, 1]
-        self.reset_goal_max_pos = self.config['goal_max_pos']  # hard code the reset goal, related to the circle_sample func
-        self.reset_goal_min_pos = self.config['goal_min_pos']
+        self.reset_goal_max_pos = self.config['task'][
+            'goal_max_pos']  # hard code the reset goal, related to the circle_sample func
+        self.reset_goal_min_pos = self.config['task']['goal_min_pos']
         self.basic_robot = np.zeros(3)
+        #  the goal of the target task
+        self.goal = self._sample_goal()
+
 
         # Observation in Task (define in mujoco xml file)
         self.table_base_handle = 'obj_table'  # table base Z position
@@ -62,7 +64,7 @@ class KitchenMultiTask(Task):
         """TODO: the goal need to be defined by the task/skill (one goal state + current demonstration state)"""
 
         # goal = circle_sample(-0.5, 0, 0.5, 0.55, 1.05, 1.1)
-        goal = np.random.uniform(np.array([-0.05, 0.45, 0.1])+np.array([-0.5, 0, 0.816]), np.array([0.05, 0.55, 0.2])+np.array([-0.5, 0, 0.816]))
+        goal = np.random.uniform(self.reset_goal_min_pos + np.array([-0.5, 0, 0.816]), self.reset_goal_max_pos + np.array([-0.5, 0, 0.816]))
         return goal
 
     def compute_reward(self) -> Union[np.ndarray, float]:
@@ -117,8 +119,10 @@ class KitchenMultiTask(Task):
         norm_grab_obj_pos = _normalization(grab_obj_pos, self.reset_goal_max_pos, self.reset_goal_min_pos, range_max=self.norm_max, range_min=self.norm_min)
         norm_grab_obj_pos = np.clip(norm_grab_obj_pos, self.norm_min, self.norm_max)
         grab_obj_quat = self.sim.get_body_quaternion(grab_obj)
+        grab_obj_rot = self.sim.get_body_euler(grab_obj)
         norm_grab_obj_quat = _normalization(grab_obj_quat, _max=1, _min=-1, range_max=self.norm_max, range_min=self.norm_min)
-        obs = np.concatenate([norm_grab_obj_pos, norm_grab_obj_quat])
+        grab_obj_rot = _normalization(grab_obj_rot, _max=np.pi, _min=-np.pi, range_max=self.norm_max, range_min=self.norm_min)
+        obs = np.concatenate([norm_grab_obj_pos, grab_obj_rot])
         return obs
 
     def is_success(
@@ -157,7 +161,7 @@ class KitchenMultiTask(Task):
             self.last_skill = self.curr_skill
         self.sim.reset() # reset first and set goal and state then, goal sample from the circle
         # self.goal = circle_sample(-0.5, 0, 0.5, 0.55, 1.05, 1.1)
-        self.goal = np.random.uniform(np.array([-0.05, 0.45, 0.1])+np.array([-0.5, 0, 0.816]), np.array([0.05, 0.55, 0.2])+np.array([-0.5, 0, 0.816]))
+        self.goal = np.random.uniform(self.reset_goal_min_pos + self.basic_robot, self.reset_goal_max_pos + self.basic_robot)
         # print(self.goal)
         # hard code for different skills' environment
         if skill_index == 0 or skill_index == 2:

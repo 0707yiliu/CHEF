@@ -499,7 +499,7 @@ class singleUR5e(MJRobot):
         self.goal = np.zeros(3)
         self.max_step_one_episode = self.config['max_step_one_episode']
         # DMPs configuration
-        self.dmp_max_step = self.config['max_step_one_episode'] # the DMPs length, should plus with the ratio for action step
+        self.dmp_max_step = self.config['demonstration_length'] # the DMPs length, should plus with the ratio for action step
         self.dmp_x = 0
         self.dmp_n_bfs = self.config['DMPs_weights_num']
         self.dmp_w = np.zeros(self.dmp_n_bfs * 12) if dmps_force_enable is True else np.zeros(self.dmp_n_bfs * 6)  # hard code for shape the size of dmps weight
@@ -516,11 +516,16 @@ class singleUR5e(MJRobot):
         self.admittance_paramsT = np.zeros((3, 3))
         self.truncation_num = 4  # Number of digits to be truncated, used when set_action
         self.last_ft = np.zeros(6)  # the last force torque sensor for guiding admittance controller, used be filtered
+        self._obs_last_ft = np.zeros(6)  # for using low-pass filter in observation space for F/T sensor
 
         self.truncated_num = 0   # record the step item for stop the epoch
         self._temporal = 0  # record the step item for DMPs in observation
-
+        self._ik_active = 1  # the flag for observation to get the ik is working or not
         self.reward_item = 0
+
+        # record buffer, for reward calculate the distance between shape
+        self._buffer_traj_size = 200
+        self._buffer_traj = np.zeros((3, self._buffer_traj_size))
 
         super().__init__(
             sim,
@@ -540,8 +545,8 @@ class singleUR5e(MJRobot):
         action = action.copy()
         act_len = len(action)
 
-        increment_ee_pos = action[:3] * 0.05
-        increment_ee_rot = action[3:] * np.deg2rad(10)
+        increment_ee_pos = action[:3] * 0.03
+        increment_ee_rot = action[3:] * np.deg2rad(3)
 
         # the limited action is set_dmps_traj (12-dim), which is used as the desired state for admittance controller
         des_pos = np.around(self.last_action_ee_pos + increment_ee_pos,
@@ -551,14 +556,13 @@ class singleUR5e(MJRobot):
         des_pos = np.clip(des_pos, self.ee_low + self.sim.get_body_position('baseL'),
                           self.ee_high + self.sim.get_body_position('baseL'))
         des_euler = np.clip(des_euler, self.ee_rot_low, self.ee_rot_high)
-        self.last_action_ee_pos = des_pos
-        self.last_action_ee_rot = des_euler
+
 
         pos_d, rot_d, self.admittance_params, self.admittance_paramsT = self.adm_controller.admittance_control(
                                                                                 desired_position=des_pos,
                                                                                 desired_rotation=des_euler,
                                                                                 FT_data=self.last_ft,
-                                                                               params_mat=self.admittance_params,
+                                                                                params_mat=self.admittance_params,
                                                                                 paramsT_mat=self.admittance_paramsT,
                                                                                 )
         position_d = np.around(pos_d, self.truncation_num)
@@ -581,13 +585,18 @@ class singleUR5e(MJRobot):
 
         if ik_qpos is None:
             # print('can not get the qpos from ikfast, keep the raw qpos.')
-            ik_qpos = curr_qpos
+            ik_qpos = curr_qpos + np.random.uniform(low=np.ones(6) * np.deg2rad(-5), high=np.ones(6) * np.deg2rad(5))
+            self._ik_active = -1
+        else:
+            self._ik_active = 1
+            # update last action for next action
+            self.last_action_ee_pos = np.copy(position_d)
+            self.last_action_ee_rot = np.copy(rotation_d)
         ik_qpos = np.around(ik_qpos, self.truncation_num)
-
         self.sim.control_joints(self.actuator_list[:-1], ik_qpos)
         self._temporal += 1
-        if self._temporal > self.max_step_one_episode - 1:
-            self._temporal = self.max_step_one_episode - 1
+        if self._temporal > self.dmp_max_step - 1:
+            self._temporal = self.dmp_max_step - 1
         self.truncated_num += 1
         if self.truncated_num > self.max_step_one_episode:  # hard code for early stop / get
             truncated = True
@@ -627,16 +636,31 @@ class singleUR5e(MJRobot):
         curr_ee_rot = self.sim.get_site_euler('attachment_siteL')  # get the EEF's euler
         curr_ee_FT = self.sim.get_ft_sensor('Lforce', 'Ltorque') if self.dmp_force_enable is True else []
         curr_state = np.concatenate((curr_ee_pos, curr_ee_rot, curr_ee_FT))
+
+
         rew_pos_traj = euclidean_distance(curr_state[:3], self.dmp_traj[:3, self._temporal])
-        rew_rot_traj = cosine_distance(curr_state[3:6], self.dmp_traj[3:6, self._temporal])
+        self._buffer_traj[:, 0] = curr_state[3:6]
+        self._buffer_traj = np.roll(self._buffer_traj, -1, axis=1)
+        if self._temporal < self._buffer_traj_size:
+            rew_rot_traj = 0
+        else:
+            for i in range(3):
+                rew_rot_traj_x = cosine_distance(self._buffer_traj[0, :],
+                                                 self.dmp_traj[3, (self._temporal-self._buffer_traj_size):self._temporal])
+                rew_rot_traj_y = cosine_distance(self._buffer_traj[1, :],
+                                                 self.dmp_traj[4, (self._temporal - self._buffer_traj_size):self._temporal])
+                rew_rot_traj_z = cosine_distance(self._buffer_traj[2, :],
+                                                 self.dmp_traj[5, (self._temporal - self._buffer_traj_size):self._temporal])
+            rew_rot_traj = (rew_rot_traj_x + rew_rot_traj_y + rew_rot_traj_z) / 3
         rew_traj = rew_pos_traj + rew_rot_traj
         # print('reward for pos:', rew_traj)
         # print('current pos:', curr_ee_pos, curr_ee_rot)
         # print('dmps traj:', self.dmp_traj[:, self.follow_dmp_step], self.follow_dmp_step)
         # input()
 
-        rew = (-weights[0] * (rew_pos + rew_rot)) * (self._temporal / self.max_step_one_episode) + \
-              (-weights[1] * rew_traj)
+        rew = (-weights[0] * (rew_pos + rew_rot)) + \
+              (-weights[1] * rew_traj) * (self._temporal / self.dmp_max_step)
+        rew += 2 if self.env_index == 0 and rew_pos < 0.01 else 0
 
         self.reward_item += 1
         if self.reward_item > 2000:  # log the reward
@@ -649,22 +673,27 @@ class singleUR5e(MJRobot):
         L_ee_pos = np.copy(self.sim.get_body_position(self.L_eef))
         L_ee_pos = _normalization(L_ee_pos, self.ee_high + self.sim.get_body_position('baseL'), self.ee_low + self.sim.get_body_position('baseL'), range_max=self.norm_max, range_min=self.norm_min)
         L_ee_quat = np.copy(self.sim.get_body_quaternion(self.L_eef))
-        L_ee_quat = _normalization(L_ee_quat, _max=1, _min=-1, range_max=self.norm_max, range_min=self.norm_min)  # hard code for normalization of quaternion
+        L_ee_rot = np.copy(self.sim.get_body_euler(self.L_eef))
+        L_ee_rot = _normalization(L_ee_rot, _max=np.pi, _min=-np.pi, range_max=self.norm_max, range_min=self.norm_min)  # hard code for normalization of quaternion
         L_ee_vels = np.copy(self.sim.get_body_velocity(self.L_eef))
         L_ee_vels = _normalization(L_ee_vels, _max=1, _min=-1, range_max=self.norm_max, range_min=self.norm_min)  # hard code for normalization of velocity
         L_FT_sensor = self.sim.get_ft_sensor('Lforce', 'Ltorque')
-        L_FT_sensor = _normalization(L_FT_sensor, _max=50, _min=-50, range_max=self.norm_max, range_min=self.norm_min)  # hard code for normalization of FT sensor
+        self._obs_last_ft = lowpass_filter(self._obs_last_ft, L_FT_sensor, 0.7)
+        L_FT_sensor = _normalization(self._obs_last_ft, _max=100, _min=-100, range_max=self.norm_max, range_min=self.norm_min)  # hard code for normalization of FT sensor
 
         # embedding the current time of DMPs' trajectory to observation space as reference trajectory
-        dmp_pos = self.dmp_traj[0:3, self._temporal]
+        next_reference = self._temporal + 1
+        if next_reference == self.dmp_max_step:
+            next_reference = self.dmp_max_step - 1
+        dmp_pos = self.dmp_traj[0:3, next_reference]
         dmp_pos = _normalization(L_ee_pos, self.ee_high + self.sim.get_body_position('baseL'), self.ee_low + self.sim.get_body_position('baseL'), range_max=self.norm_max, range_min=self.norm_min)
-        dmp_rot = self.dmp_traj[3:6, self._temporal]
-        dmp_quat = Rotation.from_euler('xyz', dmp_rot, degrees=False).as_quat()
-        dmp_quat = _normalization(dmp_quat, _max=1, _min=-1, range_max=self.norm_max, range_min=self.norm_min)
-        _item = self._temporal / self.max_step_one_episode
+        dmp_rot = self.dmp_traj[3:6, next_reference]
+        # dmp_quat = Rotation.from_euler('xyz', dmp_rot, degrees=False).as_quat()
+        dmp_rot = _normalization(dmp_rot, _max=np.pi, _min=-np.pi, range_max=self.norm_max, range_min=self.norm_min)
+        _item = next_reference / self.dmp_max_step
 
         # obs = np.concatenate([norm_L_ee_pos, norm_L_ee_quat, norm_L_ee_vels, norm_L_FT_snesor, self.dmp_w])  # put the DMPs weights to observation space
-        obs = np.concatenate([L_ee_pos, L_ee_quat, L_FT_sensor, dmp_pos, dmp_quat, [_item]])
+        obs = np.concatenate([L_ee_pos, L_ee_rot, L_FT_sensor, dmp_pos, dmp_rot, [_item, self._ik_active]])
         return obs
 
     def reset(self, index, target_goal) -> bool:
@@ -674,6 +703,7 @@ class singleUR5e(MJRobot):
             None
         """
         logging.info('reset')
+        self._ik_active = 1
         self.truncated_num = 0  # reset the count fot step
         self._temporal = 0  # reset the temporal counter for observation
         self.goal = target_goal
@@ -698,7 +728,7 @@ class singleUR5e(MJRobot):
             self.last_action_ee_rot = Rotation.from_quat(last_action_ee_rot).as_euler('xyz', degrees=False)
             start_rot = np.copy(self.last_action_ee_rot)
             # start_rot = Rotation.from_quat(start_quat).as_euler('xyz', degrees=False)
-            target_rot = np.deg2rad(np.random.uniform([-180, -10, -30], [-90, 10, 30]))
+            target_rot = np.deg2rad(np.random.uniform([-120, -10, -30], [-60, 10, 30]))
             data_path = local_path + '../../datasets/reach/'
             data_names = os.listdir(data_path)
             data_path = data_path + random.choice(data_names)

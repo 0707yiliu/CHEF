@@ -106,18 +106,19 @@ class RobotTaskEnv(gym.Env):
         self.action_space = self.robot.action_space
         self.reset()
         obs = self._get_obs()
-        _common_obs_shape = obs['common_observation'].shape[0]
+        _common_obs_shape = obs.shape[0]
         # _current_state_shape = obs['current_state'].shape[0]
         # _desired_state_shape = obs['desired_state'].shape[0]
         norm_max = normalization_range[1]
         norm_min = normalization_range[0]
-        self.observation_space = spaces.Dict(
-            {
-                "common_observation": spaces.Box(float("-inf"),  float("inf"), shape=(_common_obs_shape,), dtype=np.float64),
-                # "current_state": spaces.Box(norm_min, norm_max, shape=(_current_state_shape,), dtype=np.float64),
-                # "desired_state": spaces.Box(norm_min, norm_max, shape=(_desired_state_shape,), dtype=np.float64),
-            }
-        )
+        self.observation_space = spaces.Box(float("-inf"),  float("inf"), shape=(_common_obs_shape,), dtype=np.float64)
+        # self.observation_space = spaces.Dict(
+        #     {
+        #         "common_observation": spaces.Box(float("-inf"),  float("inf"), shape=(_common_obs_shape,), dtype=np.float64),
+        #         # "current_state": spaces.Box(norm_min, norm_max, shape=(_current_state_shape,), dtype=np.float64),
+        #         # "desired_state": spaces.Box(norm_min, norm_max, shape=(_desired_state_shape,), dtype=np.float64),
+        #     }
+        # )
         print('action space:', self.action_space)
         print('observation space:', self.observation_space)
 
@@ -140,11 +141,12 @@ class RobotTaskEnv(gym.Env):
         observation = np.concatenate([robot_obs, task_obs])
         current_state = self.task.get_achieved_goal()
         desired_state = self.task.get_desired_goal()
-        return {
-            'common_observation': observation,
-            # 'current_state': current_state,
-            # 'desired_state': desired_state,
-        }
+        return observation
+        # return {
+        #     'common_observation': observation,
+        #     # 'current_state': current_state,
+        #     # 'desired_state': desired_state,
+        # }
         # return {
         #     'common_observation': np.array([-1, -1]),
         #     'current_state': np.array([-1, -1]),
