@@ -71,6 +71,7 @@ elif config['alg']['name'] == 'PPO':
         policy=config['alg']['policy'],
         env=env,
         verbose=1,
+        target_kl=config['alg']['target_kl'],
         clip_range=linear_schedule(initial_value=config['alg']['clip_range'][1], lowest_value=config['alg']['clip_range'][0]),
         learning_rate=linear_schedule(initial_value=config['alg']['learning_rate']),
         ent_coef=config['alg']['ent_coef'],

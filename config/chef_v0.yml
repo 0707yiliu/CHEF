@@ -14,13 +14,13 @@ kitchen_tasks_chain: {'flip_bottle':['reach', 'pick', 'reach', 'flip', 'reach', 
 # the chain formed by skills, mainly used in robot part for DMPs
 demonstration_trajectories_paths: ''  # loading demonstration trajectory for different skills
 demonstration_length: 2000  # the length of the demonstration, uniformed
-DMPs_weights_num: 50
+DMPs_weights_num: 60
 max_step_one_episode: 6000
 ratio_demonstration2action: 3 # the ratio between the length of demonstration and length of the action step echo epoch
 # robot config
 ee_pos_limitation_low: [-0.3, 0.1, 0.2]
 ee_pos_limitation_high: [0.3, 0.7, 0.8]
-ee_rot_limitation_low: [-90, -120, -20]
+ee_rot_limitation_low: [-135, -120, -20]
 ee_rot_limitation_high: [0, 120, 20]
 
 task:
@@ -30,11 +30,12 @@ task:
 
 alg:
   name: PPO # the algorithm used
-  latent_networks: [256, 128]
+  latent_networks: [128, 128]
   policy: 'MlpPolicy'
-  clip_range: [0.19, 0.35] # the clip range for PPO, can be used as min to max in linear schedule
-  learning_rate: 0.002
+  clip_range: [0.17, 0.04] # the clip range for PPO, can be used as min to max in linear schedule
+  learning_rate: 0.00035
   ent_coef: 0.0016 # the entropy coefficasion for PPO
+  target_kl: 0.03
   n_steps: 2048 # the testing step each epoch
   batch_size: 64
   n_epochs: 10
@@ -43,5 +44,13 @@ alg:
   eval_freq: 20000
   log_path: '/home/yi/project_ghent/chef/logs/'  # the root of tensorboard logging path
   model_path: '/home/yi/robotic_manipulation/SoftBodyChef/models/'
+
+reward_shaping:
+  weights: [1, 0.01]  # the weight for different parts
+  log_base: 0.5  # logarithm configuration (0 < log_base < 1)
+  dis_threshold: 0.1  # the threshold for EEF distance, pos + rot
+  max_EEF_distance: 2  # for testing reach skill, maximum distance in EEF
+  max_traj_diff: 2  # the maximum diff between DMPs traj and current traj
+
 
 

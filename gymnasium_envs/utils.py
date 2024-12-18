@@ -6,6 +6,23 @@ from scipy.spatial.transform import Rotation
 from scipy.spatial.distance import pdist
 from typing import Callable
 
+
+def cus_log(x_value, base_x):
+    """
+    :param x_value: x
+    :param base_x: base
+    """
+    return np.log(x_value) / np.log(base_x)
+
+def reward_rescaling(loop_rew_datas, gamma=0.99):
+    '''calculate the standard variation value for reward rescaling'''
+    data_len = len(loop_rew_datas)
+    discount_data = []
+    for i in range(data_len):
+        discount_data.append(loop_rew_datas[i] * (gamma ** ((data_len - 1) - i)))
+    # return np.std(loop_rew_datas)
+    return np.std(discount_data)
+
 def linear_schedule(initial_value: float, lowest_value: float = 0.000) -> Callable[[float], float]:
     """
     Linear learning rate schedule.

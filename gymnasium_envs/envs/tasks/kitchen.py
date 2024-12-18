@@ -60,6 +60,10 @@ class KitchenMultiTask(Task):
         self.bowl_pos_range = np.array([[-0.42, -0.47], [0.6, 0.64], [0.78, 0.82]])
         self.fixed_area_pos_range = np.array([[-0.93, 0.97], [0.6, 0.64], [0.78, 0.82]])
 
+        # success count
+        self._success_done_count = 3
+        self._success_count = 0
+
     def _sample_goal(self) -> np.ndarray:
         """TODO: the goal need to be defined by the task/skill (one goal state + current demonstration state)"""
 
@@ -116,13 +120,15 @@ class KitchenMultiTask(Task):
         #  !the skill imitation by RL. Obs space in env contains one target for unified perspectives
         grab_obj = 'grab_obj'
         grab_obj_pos = self.sim.get_body_position(grab_obj)
-        norm_grab_obj_pos = _normalization(grab_obj_pos, self.reset_goal_max_pos, self.reset_goal_min_pos, range_max=self.norm_max, range_min=self.norm_min)
-        norm_grab_obj_pos = np.clip(norm_grab_obj_pos, self.norm_min, self.norm_max)
+        grab_obj_pos += np.random.uniform(low=-np.ones(3) * 0.003, high=np.ones(3) * 0.003)
+        grab_obj_pos = _normalization(grab_obj_pos, self.reset_goal_max_pos, self.reset_goal_min_pos, range_max=self.norm_max, range_min=self.norm_min)
+        # norm_grab_obj_pos = np.clip(norm_grab_obj_pos, self.norm_min, self.norm_max)
         grab_obj_quat = self.sim.get_body_quaternion(grab_obj)
         grab_obj_rot = self.sim.get_body_euler(grab_obj)
+        grab_obj_rot += np.random.uniform(low=-np.ones(3) * np.deg2rad(3), high=np.ones(3) * np.deg2rad(3))
         norm_grab_obj_quat = _normalization(grab_obj_quat, _max=1, _min=-1, range_max=self.norm_max, range_min=self.norm_min)
         grab_obj_rot = _normalization(grab_obj_rot, _max=np.pi, _min=-np.pi, range_max=self.norm_max, range_min=self.norm_min)
-        obs = np.concatenate([norm_grab_obj_pos, grab_obj_rot])
+        obs = np.concatenate([grab_obj_pos, grab_obj_rot])
         return obs
 
     def is_success(
@@ -138,9 +144,17 @@ class KitchenMultiTask(Task):
             rot_dis = cosine_distance(obj_euler[:2], target_rot)
             done = True if rot_dis < 0.1 and pos_dis < 0.01 else False
         else:
-            done = True if pos_dis < 0.02 else False  # pouring and reach skill, the done do not need rotation
+            done = True if pos_dis < 0.03 else False  # pouring and reach skill, the done do not need rotation
         if done is True:
-            print('done')
+            print('done!')
+        # if done is True:
+        #     self._success_count += 1
+        #     if self._success_count == self._success_done_count:
+        #         print('done')
+        #     else:
+        #         done = False
+        # else:
+        #     self._success_count = 0
         return done
 
     def reset(self, skill_index):
@@ -150,6 +164,7 @@ class KitchenMultiTask(Task):
         """
         # reloading mj xml file
         # chose new env
+        self._success_count = 0
         self.basic_robot = self.sim.get_body_position('baseL')  # the the position of basic for single arm
         self.curr_skill = self.specified_skills[skill_index]
         # print(self.curr_skill, self.last_skill)

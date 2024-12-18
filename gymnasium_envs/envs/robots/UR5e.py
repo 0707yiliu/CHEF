@@ -5,7 +5,7 @@ import math
 from gymnasium_envs.envs.core import MJRobot
 from gymnasium import spaces
 
-from gymnasium_envs.utils import _normalization, interp_preprocessed_data_with_vel, euclidean_distance, lowpass_filter, cosine_distance
+from gymnasium_envs.utils import _normalization, interp_preprocessed_data_with_vel, euclidean_distance, lowpass_filter, cosine_distance, reward_rescaling, cus_log
 from scipy.spatial.transform import Rotation
 from gymnasium_envs.DMPs import dmps
 from gymnasium_envs.admittance_controller.core import FT_controller as AdmController
@@ -522,10 +522,13 @@ class singleUR5e(MJRobot):
         self._temporal = 0  # record the step item for DMPs in observation
         self._ik_active = 1  # the flag for observation to get the ik is working or not
         self.reward_item = 0
+        self._reward_std = 1  # for r_t/self._reward_std to get the scaling reward
+        self._reward_buffer = []  # record the one epoch reward for get new standard variation reward
 
         # record buffer, for reward calculate the distance between shape
         self._buffer_traj_size = 200
         self._buffer_traj = np.zeros((3, self._buffer_traj_size))
+
 
         super().__init__(
             sim,
@@ -545,8 +548,8 @@ class singleUR5e(MJRobot):
         action = action.copy()
         act_len = len(action)
 
-        increment_ee_pos = action[:3] * 0.03
-        increment_ee_rot = action[3:] * np.deg2rad(3)
+        increment_ee_pos = action[:3] * 0.02
+        increment_ee_rot = action[3:] * np.deg2rad(5)
 
         # the limited action is set_dmps_traj (12-dim), which is used as the desired state for admittance controller
         des_pos = np.around(self.last_action_ee_pos + increment_ee_pos,
@@ -585,7 +588,17 @@ class singleUR5e(MJRobot):
 
         if ik_qpos is None:
             # print('can not get the qpos from ikfast, keep the raw qpos.')
-            ik_qpos = curr_qpos + np.random.uniform(low=np.ones(6) * np.deg2rad(-5), high=np.ones(6) * np.deg2rad(5))
+            # print(position_d - self.sim.get_body_position('baseL'))
+            ik_qpos = curr_qpos
+
+            # make tiny random degree for get new achievable position
+            end3qpos = curr_qpos[3:] + np.random.uniform(low=np.ones(3) * np.deg2rad(-5), high=np.ones(3) * np.deg2rad(5))
+            ik_qpos = np.concatenate((curr_qpos[:3], end3qpos))
+            eepos, eequat = self.sim.forward_kinematics_ikfast(ik_qpos)
+
+            self.last_action_ee_pos = np.copy(eepos)
+            self.last_action_ee_rot = Rotation.from_quat(eequat).as_euler('xyz', degrees=False)
+
             self._ik_active = -1
         else:
             self._ik_active = 1
@@ -614,7 +627,17 @@ class singleUR5e(MJRobot):
         Returns:
             Float type distance for goal task
         """
-        weights = [1, 0.05]  # the weight for all reward factors, index 0: pos and rot err, index 1: trajectory err
+        weights = self.config['reward_shaping']['weights']  # the weight for all reward factors, index 0: pos and rot err, index 1: trajectory err
+        log_base = self.config['reward_shaping']['log_base']  # logarithm configuration (0<log_base<1)
+        dis_threshold = self.config['reward_shaping']['dis_threshold']  # if the distance lower than dis_threshold (like 10 cm, 0.1), the reward go to positive
+        traj_threshold = self.config['reward_shaping']['max_traj_diff']  # same function as dis_threshold for demonstration trajectory from DMPs
+        # normalize the distance in negative part and positive part
+        max_dis = self.config['reward_shaping']['max_EEF_distance']
+        dis_negative_low = cus_log(x_value=max_dis + (1 - dis_threshold), base_x=log_base)  # specified, need to test if changed the parameters
+        dis_negative_high = cus_log(x_value=dis_threshold + (1 - dis_threshold), base_x=log_base)
+        dis_positive_low = cus_log(x_value=dis_threshold + (1 - dis_threshold), base_x=log_base)
+        dis_positive_high = cus_log(x_value=0 + (1 - dis_threshold), base_x=log_base)
+
         # calculater pos and rot err
         rew_rot = 0  # some envs do not need rotation reward
         if self.env_index == 2:  # pour skill, calculate the distance between cube and the area
@@ -622,6 +645,9 @@ class singleUR5e(MJRobot):
             rew_pos = euclidean_distance(self.goal, cube_pos)
             # rew_rot = 0  # disable the rotation distance
         else:  # flip and reach skill, calculate the distance between EEF site and target goal, contain rotation
+            if self.env_index == 0:
+                rew_rot = cosine_distance(self.target_rot, self.sim.get_site_euler('attachment_siteL'))
+                # print(rew_rot)
             ee_site_pos = self.sim.get_site_position('attachment_siteL')
             pos_dis = euclidean_distance(self.goal, ee_site_pos)
             rew_pos = pos_dis
@@ -629,7 +655,7 @@ class singleUR5e(MJRobot):
             #     rew_rot = 0  # disable the rotation distance
             if self.env_index == 1:
                 obj_euler = self.sim.get_body_euler('grab_obj')
-                rew_rot = cosine_distance(self.target_state[3:5], obj_euler[:2]) # get the reward of rotation, only focus on x-aixs and y-axis
+                rew_rot = cosine_distance(self.target_state[3:5], obj_euler[:2])  # get the reward of rotation, only focus on x-aixs and y-axis
 
         # calculater trajectory err between current state and demonstration's state
         curr_ee_pos = self.sim.get_site_position('attachment_siteL')  # get the EEF's pos
@@ -658,9 +684,32 @@ class singleUR5e(MJRobot):
         # print('dmps traj:', self.dmp_traj[:, self.follow_dmp_step], self.follow_dmp_step)
         # input()
 
-        rew = (-weights[0] * (rew_pos + rew_rot)) + \
-              (-weights[1] * rew_traj) * (self._temporal / self.dmp_max_step)
-        rew += 2 if self.env_index == 0 and rew_pos < 0.01 else 0
+        th = 0.02  # distance is 2cm for reach skill
+        rew_dis = rew_pos + rew_rot
+        if rew_dis > dis_threshold:  # negative part
+            rew_dis_norm = _normalization(cus_log(rew_dis + (1 - dis_threshold), base_x=log_base),
+                                              _min=dis_negative_low, _max=dis_negative_high,
+                                              range_min=-1, range_max=0)
+        else:
+            rew_dis_norm = _normalization(cus_log(rew_dis + (1 - dis_threshold), base_x=log_base),
+                                              _min=dis_positive_low, _max=dis_positive_high,
+                                              range_min=0, range_max=1)
+        # print('rew:', rew, cus_log(rew_dis + (1 - dis_threshold), base_x=log_base))
+        rew = weights[0] * rew_dis_norm + \
+              weights[1] * _normalization(-rew_traj,
+                                          _min=-traj_threshold, _max=0,
+                                          range_min=-1, range_max=1)
+
+
+        # rew = -weights[0] * cus_log(rew_pos + (1 - th * 1.3), 10)
+
+        # rew = (-weights[0] * (rew_pos + rew_rot)) + \
+        #       (-weights[1] * rew_traj) * (self._temporal / self.dmp_max_step)
+        #
+        # self._reward_buffer.append(rew)
+        # rew /= (self._reward_std + 1e-8)
+
+        # rew += 1 if self.env_index == 0 and rew_pos < 0.02 else 0
 
         self.reward_item += 1
         if self.reward_item > 2000:  # log the reward
@@ -679,6 +728,7 @@ class singleUR5e(MJRobot):
         L_ee_vels = _normalization(L_ee_vels, _max=1, _min=-1, range_max=self.norm_max, range_min=self.norm_min)  # hard code for normalization of velocity
         L_FT_sensor = self.sim.get_ft_sensor('Lforce', 'Ltorque')
         self._obs_last_ft = lowpass_filter(self._obs_last_ft, L_FT_sensor, 0.7)
+        # print(self._obs_last_ft)
         L_FT_sensor = _normalization(self._obs_last_ft, _max=100, _min=-100, range_max=self.norm_max, range_min=self.norm_min)  # hard code for normalization of FT sensor
 
         # embedding the current time of DMPs' trajectory to observation space as reference trajectory
@@ -693,7 +743,8 @@ class singleUR5e(MJRobot):
         _item = next_reference / self.dmp_max_step
 
         # obs = np.concatenate([norm_L_ee_pos, norm_L_ee_quat, norm_L_ee_vels, norm_L_FT_snesor, self.dmp_w])  # put the DMPs weights to observation space
-        obs = np.concatenate([L_ee_pos, L_ee_rot, L_FT_sensor, dmp_pos, dmp_rot, [_item, self._ik_active]])
+        # obs = np.concatenate([L_ee_pos, L_ee_rot, L_FT_sensor, dmp_pos, dmp_rot, [_item, self._ik_active]])
+        obs = np.concatenate([L_ee_pos, L_ee_rot, dmp_pos, dmp_rot, [_item, self._ik_active]])  # F/T sensor change too much in observation space
         return obs
 
     def reset(self, index, target_goal) -> bool:
@@ -703,6 +754,11 @@ class singleUR5e(MJRobot):
             None
         """
         logging.info('reset')
+        # update reward scaling factor by reward buffer
+        if self._reward_buffer:
+            # print(self._reward_buffer)
+            self._reward_std = reward_rescaling(self._reward_buffer)
+        self._reward_buffer = []  # reset reward buffer for next epoch
         self._ik_active = 1
         self.truncated_num = 0  # reset the count fot step
         self._temporal = 0  # reset the temporal counter for observation
@@ -728,7 +784,7 @@ class singleUR5e(MJRobot):
             self.last_action_ee_rot = Rotation.from_quat(last_action_ee_rot).as_euler('xyz', degrees=False)
             start_rot = np.copy(self.last_action_ee_rot)
             # start_rot = Rotation.from_quat(start_quat).as_euler('xyz', degrees=False)
-            target_rot = np.deg2rad(np.random.uniform([-120, -10, -30], [-60, 10, 30]))
+            self.target_rot = np.deg2rad(np.random.uniform([-120, -10, -10], [-60, 10, 10]))
             data_path = local_path + '../../datasets/reach/'
             data_names = os.listdir(data_path)
             data_path = data_path + random.choice(data_names)
@@ -825,7 +881,7 @@ class singleUR5e(MJRobot):
         self.start_state = np.concatenate((start_pos, start_rot, start_forcetorque))
         # print('start pos calculated:', start_pos)
         # input()
-        self.target_state = np.concatenate((target_pos, target_rot, target_forcetorque))
+        self.target_state = np.concatenate((target_pos, self.target_rot, target_forcetorque))
         demo_ee_pos, demo_ee_rot, demo_ee_posvel, demo_ee_rotvel, demo_ee_quat, demo_eeft = interp_preprocessed_data_with_vel(
             data_path=data_path,
             ex_length=self.dmp_max_step,
