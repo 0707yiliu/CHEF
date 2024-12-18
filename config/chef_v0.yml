@@ -16,17 +16,20 @@ demonstration_trajectories_paths: ''  # loading demonstration trajectory for dif
 demonstration_length: 2000  # the length of the demonstration, uniformed
 DMPs_weights_num: 60
 max_step_one_episode: 6000
-ratio_demonstration2action: 3 # the ratio between the length of demonstration and length of the action step echo epoch
-# robot config
-ee_pos_limitation_low: [-0.3, 0.1, 0.2]
-ee_pos_limitation_high: [0.3, 0.7, 0.8]
-ee_rot_limitation_low: [-135, -120, -20]
-ee_rot_limitation_high: [0, 120, 20]
+
+robot:
+  # robot config
+  ee_pos_limitation_low: [ -0.3, 0.1, 0.2 ]
+  ee_pos_limitation_high: [ 0.3, 0.7, 0.8 ]
+  ee_rot_limitation_low: [ -135, -120, -20 ]
+  ee_rot_limitation_high: [ 0, 120, 20 ]
+  ee_pos_increment: 0.02  # the increment of the EEF pos when action space is 6-DoF of EEF (meter)
+  ee_rot_increment: 5  # same as ee_pos_increment' meaning (degree)
 
 task:
   goal_max_pos: [ 0.1, 0.6, 0.45 ]
   goal_min_pos: [ -0.1, 0.4, 0.35 ]
-  done_limit: 0.02
+  done_limit: 0.01  # the done limit in env0 (reach skill, distance, unit: meter)
 
 alg:
   name: PPO # the algorithm used
@@ -39,7 +42,7 @@ alg:
   n_steps: 2048 # the testing step each epoch
   batch_size: 64
   n_epochs: 10
-  total_timesteps: 6000000
+  total_timesteps: 8000000
   checkpoint_freq: 200000
   eval_freq: 20000
   log_path: '/home/yi/project_ghent/chef/logs/'  # the root of tensorboard logging path

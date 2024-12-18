@@ -61,8 +61,13 @@ class KitchenMultiTask(Task):
         self.fixed_area_pos_range = np.array([[-0.93, 0.97], [0.6, 0.64], [0.78, 0.82]])
 
         # success count
-        self._success_done_count = 3
+        self.success_done_hold_max = 10
+        self.success_item = 1
+        self._success_done_count = 10
         self._success_count = 0
+        self.current_count = 0  # count the success number in current loop
+        self.reach_done_limit = self.config['task']['done_limit']
+        self.reach_done_go = 0.035  # start from done_go, to done_limit as the lowest done.
 
     def _sample_goal(self) -> np.ndarray:
         """TODO: the goal need to be defined by the task/skill (one goal state + current demonstration state)"""
@@ -120,12 +125,12 @@ class KitchenMultiTask(Task):
         #  !the skill imitation by RL. Obs space in env contains one target for unified perspectives
         grab_obj = 'grab_obj'
         grab_obj_pos = self.sim.get_body_position(grab_obj)
-        grab_obj_pos += np.random.uniform(low=-np.ones(3) * 0.003, high=np.ones(3) * 0.003)
+        grab_obj_pos += np.random.uniform(low=-np.ones(3) * 0.003, high=np.ones(3) * 0.003)  # make noise for obj pos in observation space
         grab_obj_pos = _normalization(grab_obj_pos, self.reset_goal_max_pos, self.reset_goal_min_pos, range_max=self.norm_max, range_min=self.norm_min)
         # norm_grab_obj_pos = np.clip(norm_grab_obj_pos, self.norm_min, self.norm_max)
         grab_obj_quat = self.sim.get_body_quaternion(grab_obj)
         grab_obj_rot = self.sim.get_body_euler(grab_obj)
-        grab_obj_rot += np.random.uniform(low=-np.ones(3) * np.deg2rad(3), high=np.ones(3) * np.deg2rad(3))
+        grab_obj_rot += np.random.uniform(low=-np.ones(3) * np.deg2rad(3), high=np.ones(3) * np.deg2rad(3)) # make noise for obj rot in observation space
         norm_grab_obj_quat = _normalization(grab_obj_quat, _max=1, _min=-1, range_max=self.norm_max, range_min=self.norm_min)
         grab_obj_rot = _normalization(grab_obj_rot, _max=np.pi, _min=-np.pi, range_max=self.norm_max, range_min=self.norm_min)
         obs = np.concatenate([grab_obj_pos, grab_obj_rot])
@@ -144,17 +149,27 @@ class KitchenMultiTask(Task):
             rot_dis = cosine_distance(obj_euler[:2], target_rot)
             done = True if rot_dis < 0.1 and pos_dis < 0.01 else False
         else:
-            done = True if pos_dis < 0.03 else False  # pouring and reach skill, the done do not need rotation
-        if done is True:
-            print('done!')
-        # if done is True:
-        #     self._success_count += 1
-        #     if self._success_count == self._success_done_count:
-        #         print('done')
-        #     else:
-        #         done = False
-        # else:
-        #     self._success_count = 0
+            done = True if pos_dis < self.reach_done_go else False  # pouring and reach skill, the done do not need rotation
+
+            if done is True:
+                self._success_count += 1
+                if self._success_count >= self.success_item:
+                    self.current_count += 1
+                    if self.current_count > self._success_done_count:
+                        self.current_count = 0
+                        self._success_count = 0
+                        self.success_item += 1
+                else:
+                    done = False
+                if self.success_item > self.success_done_hold_max:
+                    self.success_item = self.success_done_hold_max
+
+            if done is True:
+                self.reach_done_go -= 0.001
+                if self.reach_done_go < self.reach_done_limit:
+                    self.reach_done_go = self.reach_done_limit
+                print('done!')
+
         return done
 
     def reset(self, skill_index):

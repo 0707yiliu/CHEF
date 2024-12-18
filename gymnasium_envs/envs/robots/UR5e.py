@@ -492,10 +492,10 @@ class singleUR5e(MJRobot):
         # specified site in simulation
         self.L_eef = 'LEEF'
         self.env_index = -1
-        self.ee_high = np.array(self.config['ee_pos_limitation_high'])
-        self.ee_low = np.array(self.config['ee_pos_limitation_low'])
-        self.ee_rot_high = np.deg2rad(self.config['ee_rot_limitation_high'])
-        self.ee_rot_low = np.deg2rad(self.config['ee_rot_limitation_low'])
+        self.ee_high = np.array(self.config['robot']['ee_pos_limitation_high'])
+        self.ee_low = np.array(self.config['robot']['ee_pos_limitation_low'])
+        self.ee_rot_high = np.deg2rad(self.config['robot']['ee_rot_limitation_high'])
+        self.ee_rot_low = np.deg2rad(self.config['robot']['ee_rot_limitation_low'])
         self.goal = np.zeros(3)
         self.max_step_one_episode = self.config['max_step_one_episode']
         # DMPs configuration
@@ -506,10 +506,10 @@ class singleUR5e(MJRobot):
         self.dmp_force_enable = dmps_force_enable  # the flag for enable force torque DMPs trajectory, delete or add in function
         self.follow_dmp_step = 0  # the step of following DMPs trajectory
 
-        self.ee_pos_increment_range = np.ones(3) * 0.015  # the maximum action step for EEF's pos, for limit the DMPs' random weight
-        self.ee_rot_increment_range = np.ones(3) * np.deg2rad(5)  # the maximum action step for EEF's rot, for limit the DMPs' random weight
-        self.ee_force_increment_range = np.ones(6) * 10 if dmps_force_enable is True else []
-        self.ee_increment_range = np.concatenate((self.ee_pos_increment_range, self.ee_rot_increment_range, self.ee_force_increment_range))
+        # self.ee_pos_increment_range = np.ones(3) * 0.015  # the maximum action step for EEF's pos, for limit the DMPs' random weight
+        # self.ee_rot_increment_range = np.ones(3) * np.deg2rad(5)  # the maximum action step for EEF's rot, for limit the DMPs' random weight
+        # self.ee_force_increment_range = np.ones(6) * 10 if dmps_force_enable is True else []
+        # self.ee_increment_range = np.concatenate((self.ee_pos_increment_range, self.ee_rot_increment_range, self.ee_force_increment_range))
         # admittance controller configuration, hard code of configuration, using critical damping
         self.adm_controller = AdmController(m=0.5, k=1000, kr=5, dt=0.01)
         self.admittance_params = np.zeros((3, 3))  # contains acc, vel and pos in xyz derictions
@@ -535,7 +535,7 @@ class singleUR5e(MJRobot):
             action_space=action_space,
             joint_index=np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]),
             joint_force=np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]),
-            init_qpos=np.deg2rad([90, -135, 90, -90, -90, 0]),
+            init_qpos=np.deg2rad([90, -135, 90, -90, -90, 0]),  # hard code for the robot, initial posture
             joint_list=["shoulder_pan_jointL", "shoulder_lift_jointL", "elbow_jointL", "wrist_1_jointL", "wrist_2_jointL", "wrist_3_jointL", "finger_joint1"],
             actuator_list=['shoulder_panL', 'shoulder_liftL', 'elbowL', 'wrist_1L', 'wrist_2L', 'wrist_3L', 'fingersL'],
             sensor_list=['magnetic_1', 'magnetic_2', 'magnetic_3', 'magnetic_4']
@@ -548,12 +548,12 @@ class singleUR5e(MJRobot):
         action = action.copy()
         act_len = len(action)
 
-        increment_ee_pos = action[:3] * 0.02
-        increment_ee_rot = action[3:] * np.deg2rad(5)
+        increment_ee_pos = action[:3] * self.config['robot']['ee_pos_increment']
+        increment_ee_rot = action[3:] * np.deg2rad(self.config['robot']['ee_rot_increment'])
 
         # the limited action is set_dmps_traj (12-dim), which is used as the desired state for admittance controller
         des_pos = np.around(self.last_action_ee_pos + increment_ee_pos,
-                            self.truncation_num)  # hard code the getting pos, rot and force/torque
+                            self.truncation_num)  # getting pos, rot and force/torque
         des_euler = np.around(self.last_action_ee_rot + increment_ee_rot, self.truncation_num)
         # print('init pos:', increment_ee_pos, self.last_action_ee_pos, des_pos)
         des_pos = np.clip(des_pos, self.ee_low + self.sim.get_body_position('baseL'),
@@ -611,7 +611,7 @@ class singleUR5e(MJRobot):
         if self._temporal > self.dmp_max_step - 1:
             self._temporal = self.dmp_max_step - 1
         self.truncated_num += 1
-        if self.truncated_num > self.max_step_one_episode:  # hard code for early stop / get
+        if self.truncated_num > self.max_step_one_episode:  # early stop / get
             truncated = True
             self.truncated_num = 0
             # print('early stop')
