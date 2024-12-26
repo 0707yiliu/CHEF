@@ -19,8 +19,12 @@ currenttime = int(time.time())
 currenttime = time.strftime("%Y%m%d%H%M%S", time.localtime(currenttime))
 
 
-env = gym.make(
-    config['task_name'],
+env = gym.make_vec(
+    id=config['task_name'],
+    num_envs=5,
+    vectorization_mode="sync",
+    wrappers=(gym.wrappers.TimeAwareObservation,),
+
     render=config['render'],
     xml_path=config['xml_path'],
     xml_file_name=config['xml_file_name'],
@@ -30,8 +34,8 @@ env = gym.make(
     kitchen_tasks_chain=config['kitchen_tasks_chain'],
     normalization_range=config['normalization_range'],
 )
-from stable_baselines3.common.monitor import Monitor
-env = Monitor(env)
+# from stable_baselines3.common.monitor import Monitor
+# env = Monitor(env)
 
 eval_callback = EvalCallback(
     env,
@@ -72,7 +76,7 @@ elif config['alg']['name'] == 'PPO':
         policy=config['alg']['policy'],
         env=env,
         verbose=1,
-        # target_kl=config['alg']['target_kl'],
+        target_kl=config['alg']['target_kl'],
         clip_range=linear_schedule(initial_value=config['alg']['clip_range'][0], lowest_value=config['alg']['clip_range'][1], up=True),
         learning_rate=linear_schedule(initial_value=config['alg']['learning_rate']),
         ent_coef=config['alg']['ent_coef'],
@@ -98,7 +102,6 @@ logger.info(f'number of epoch:' + str(config['alg']['n_epochs']))
 logger.info(f'clip range:' + str(config['alg']['clip_range']))
 logger.info(f'learning rate:' + str(config['alg']['learning_rate']))
 logger.info(f'reward gamma:' + str(config['alg']['gamma']))
-logger.info(f'collision is ' + str(config['collision']))
 logger.info(f'robot EEF range - ' +
             'ee_pos_limitation_low: ' + str(config['robot']['ee_pos_limitation_low']) +
             'ee_pos_limitation_high: ' + str(config['robot']['ee_pos_limitation_high']) +

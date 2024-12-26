@@ -117,25 +117,28 @@
                 <geom mesh="wrist2_2L" material="jointgrayL" class="visualL"/>
                 <geom class="collisionL" size="0.04 0.06" pos="0 0 0.04"/>
                 <geom class="collisionL" pos="0 0.02 0.1" quat="1 1 0 0" size="0.04 0.04"/>
-                <body name="wrist_3_linkL" pos="0 0 0.1">
+                <body name="wrist_3_linkL" pos="0 0 0.1" quat='1 0 0 0'>
                   <inertial mass="0.1889" pos="0 0.0771683 0" quat="1 0 0 1"
                     diaginertia="0.000132134 9.90863e-05 9.90863e-05"/>
                   <joint name="wrist_3_jointL" class="size1L"/>
                   <geom material="linkgrayL" mesh="wrist3L" class="visualL"/>
                   <geom class="eef_collisionL" pos="0 0.08 0" quat="1 1 0 0" size="0.04 0.02"/>
                   <site name="attachment_siteL" pos="0 0.25 0" quat="1 0 0 0"/>
+                  <site name="ee_pos" pos="0 0.1 0" quat="1 0 0 0"/>
                   <site name="L_ft_sensor" pos="0 0.1 0" rgba="1 0 0 0.3" size="0.1"/>
                   <body name="LEEF" pos="0 0.1 0">
+                    <site name="EEFee_pos" pos="0 0.15 0" quat="1 -1 0 0"/>
+<!--                    <geom type="box" size="0.001 0.001 0.001" pos="0 0.15 0" quat="1 -1 0 0"/>-->
                     <inertial mass="0.1889" pos="0 0.0771683 0" quat="1 0 0 1"
                       diaginertia="0.000132134 9.90863e-05 9.90863e-05"/>
                     <geom material="linkgrayL" mesh="schunkbaseL" class="visualL"/>
                     <body name="finger1" pos="0.08 0.13 0">
-                    <inertial mass="0.015" pos="0 0 0" diaginertia="2.375e-6 2.375e-6 7.5e-7"/>
+                      <inertial mass="0.015" pos="0 0 0" diaginertia="2.375e-6 2.375e-6 7.5e-7"/>
                       <joint name="finger_joint1" class="finger"/>
-                    <geom type="box"  size="0.008 0.05 0.014" rgba="0 0 1 1" friction="1"/>
+                      <geom type="box"  size="0.008 0.05 0.014" rgba="0 0 1 1" friction="1"/>
                     </body>
                     <body name="finger2" pos="-0.08 0.13 0">
-                    <inertial mass="0.015" pos="0 0 0" diaginertia="2.375e-6 2.375e-6 7.5e-7"/>
+                      <inertial mass="0.015" pos="0 0 0" diaginertia="2.375e-6 2.375e-6 7.5e-7"/>
                       <joint name="finger_joint2" class="finger" axis="1 0 0"/>
                       <geom type="box" size="0.008 0.05 0.014" rgba="0.5 0 0.5 1" friction="1 1 1"/>
                     </body>

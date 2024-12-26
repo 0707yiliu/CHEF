@@ -1,15 +1,14 @@
+import logging
 import time
 
 import gymnasium as gym
-import numpy as np
-import gymnasium_envs
-from stable_baselines3 import PPO, TD3, DDPG, HER, SAC
-from stable_baselines3.common.env_checker import check_env
-from stable_baselines3.common.callbacks import CallbackList, BaseCallback, CheckpointCallback, EvalCallback
-import yaml
 import torch as th
+import yaml
+from stable_baselines3 import PPO, TD3
+from stable_baselines3.common.callbacks import CallbackList, CheckpointCallback, EvalCallback
+from stable_baselines3.common.env_checker import check_env
+
 from gymnasium_envs.utils import linear_schedule
-import logging
 
 with open('config/chef_v0.yml', 'r', encoding='utf-8') as cfg:
     config = yaml.load(cfg, Loader=yaml.FullLoader)
@@ -98,7 +97,6 @@ logger.info(f'number of epoch:' + str(config['alg']['n_epochs']))
 logger.info(f'clip range:' + str(config['alg']['clip_range']))
 logger.info(f'learning rate:' + str(config['alg']['learning_rate']))
 logger.info(f'reward gamma:' + str(config['alg']['gamma']))
-logger.info(f'collision is ' + str(config['collision']))
 logger.info(f'robot EEF range - ' +
             'ee_pos_limitation_low: ' + str(config['robot']['ee_pos_limitation_low']) +
             'ee_pos_limitation_high: ' + str(config['robot']['ee_pos_limitation_high']) +

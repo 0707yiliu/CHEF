@@ -70,7 +70,11 @@ class MJFunc:
             self.viewer.cam.lookat[:] = self.viewer_lookat
     @property
     def dt(self):
+        '''timestep in Mjoaco, set in config file now, use set_time_step func'''
         pass
+
+    def set_timestep(self, dt):
+        self.model.opt.timestep = dt
 
     def reset(self):
         mujoco.mj_resetData(self.model, self.data)
@@ -129,11 +133,12 @@ class MJFunc:
 
     def set_mocap_pos(self, mocap: str, pos: np.ndarray) -> None:
         mocap_id = self.model.body_mocapid[self.data.body(mocap).id]
-        self.data.mocap_pos[mocap_id] = pos  # TODO:the id is not defined in mujoco, you should design a search method
+        self.data.mocap_pos[mocap_id] = pos
         # self.data.mocap_pos[mujoco.mj_name2id()]
 
     def set_mocap_quat(self, mocap: str, quat: np.ndarray) -> None:
-        self.data.mocap_quat[0] = quat  # TODO: the same problem like set_mocap_pos func
+        mocap_id = self.model.body_mocapid[self.data.body(mocap).id]
+        self.data.mocap_quat[mocap_id] = quat
 
     def control_joints(self, actuator_list, target_angles) -> None:
         assert len(actuator_list) == len(target_angles)

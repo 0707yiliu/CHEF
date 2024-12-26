@@ -1,8 +1,8 @@
-task_name: 'Chef-v0'
+task_name: 'Chef-v1'
 render: False
 normalization_range: [-1, 1]
 xml_path: '/gymnasium_envs/robot_env_description/'  # root of the xml file
-xml_file_name: 'scene_reach.xml'  # xml file for training in mujoco
+xml_file_name: 'scene_tool_reach.xml'  # xml file for training in mujoco
 basic_skill_name: ['pick', 'release']  # basic skill, fixed
 specified_skill_name: ['reach', 'flip', 'pour']  # specified skills for cooking/kitchen
 kitchen_tasks_name: ['flip_bottle', 'pour_water', 'pick_cube']
@@ -13,40 +13,37 @@ kitchen_tasks_chain: {'flip_bottle':['reach', 'pick', 'reach', 'flip', 'reach', 
 }
 # the chain formed by skills, mainly used in robot part for DMPs
 demonstration_trajectories_paths: ''  # loading demonstration trajectory for different skills
-demonstration_length: 3000  # the length of the demonstration, uniformed
+demonstration_length: 2000  # the length of the demonstration, uniformed
 DMPs_weights_num: 60
-max_step_one_episode: 3100
-collision: False
+max_step_one_episode: 2100
 
 robot:
   # robot config
-  ee_pos_limitation_low: [ -0.3, 0.1, 0.2]
-  ee_pos_limitation_high: [ 0.3, 0.7, 0.8 ]
-  ee_rot_limitation_low: [ -170, -15, -15 ]
-  ee_rot_limitation_high: [ -100, 15, 15 ]
-#  ee_rot_limitation_low: [ -100, -20, -20 ]  # for only tool
-#  ee_rot_limitation_high: [ 10,  20, 20 ]
-  ee_pos_increment: 0.001 # the increment of the EEF pos when action space is 6-DoF of EEF (meter)
-  ee_rot_increment: 0.5  # same as ee_pos_increment' meaning (degree)
-  mj_timestep: 0.005 # make it fast to get the sample more than 0.004, 0.002 (default) is too slow
-
+  ee_pos_limitation_low: [ -0.4, 0.0, 0.0]
+  ee_pos_limitation_high: [ 0.4, 0.8, 0.8 ]
+#  ee_rot_limitation_low: [ -190, -20, -20 ]
+#  ee_rot_limitation_high: [ -80,  20, 20 ]
+  ee_rot_limitation_low: [ -120, -180, -90 ]  # for only tool
+  ee_rot_limitation_high: [ 0,  180, 90 ]
+  ee_pos_increment: 0.005  # the increment of the EEF pos when action space is 6-DoF of EEF (meter)
+  ee_rot_increment: 1  # same as ee_pos_increment' meaning (degree)
 task:
-  goal_max_pos: [ 0.15, 0.6, 0.5 ]
-  goal_min_pos: [ -0.15, 0.3, 0.3 ]
-  done_limit: 0.025  # the done limit in env0 (reach skill, distance, unit: meter)
+  goal_min_pos: [ -0.2, 0.4, 0.35 ]
+  goal_max_pos: [ 0.2, 0.6, 0.45 ]
+  done_limit: 0.02  # the done limit in env0 (reach skill, distance, unit: meter)
 
 alg:
   name: PPO # the algorithm used
   latent_networks: [128, 128]
   policy: 'MlpPolicy'
   clip_range: [0.03, 0.2] # the clip range for PPO, can be used as min to max in linear schedule, the begin is clip_range[1], the end is clip_range[1] + clip_range[0]
-  learning_rate: 0.0003
+  learning_rate: 0.0004
   ent_coef: 0.0016 # the entropy coefficasion for PPO
   target_kl: 0.015
   n_steps: 2048 # the testing step each epoch
   batch_size: 64
   n_epochs: 20
-  gamma: 0.98
+  gamma: 0.97
   total_timesteps: 4000000
   checkpoint_freq: 200000
   eval_freq: 20000

@@ -9,7 +9,7 @@ from stable_baselines3.common.callbacks import CallbackList, BaseCallback, Check
 import yaml
 import torch as th
 
-with open('config/chef_v0.yml', 'r', encoding='utf-8') as cfg:
+with open('config/chef_v1.yml', 'r', encoding='utf-8') as cfg:
     config = yaml.load(cfg, Loader=yaml.FullLoader)
 
 env = gym.make(
@@ -24,7 +24,7 @@ env = gym.make(
     normalization_range=config['normalization_range'],
 )
 log_path = config['alg']['log_path']
-model_path = log_path + 'eval/Chef-v0-PPO-20241225212756/best_model.zip'
+model_path = log_path + 'eval/Chef-v1-PPO-20241223203447/best_model.zip'
 # model_path = './models/PPO/Chef-v0-20241219183544.pkl'
 if config['alg']['name'] == 'PPO':
     model = PPO.load(model_path, env=env)

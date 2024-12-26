@@ -163,7 +163,9 @@ class RobotTaskEnv(gym.Env):
     def step(
         self, action: ActType
     ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
-        truncated = self.robot.set_action(action)
+        truncated = False
+        # truncated = self.robot.set_action(action)
+        self.robot.set_action(action)
         obs = self._get_obs()
         terminated = self.task.is_success(self.task.get_achieved_goal(), self.task.get_desired_goal())
         reward = self.robot.compute_reward()

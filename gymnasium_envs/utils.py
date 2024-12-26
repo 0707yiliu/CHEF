@@ -14,6 +14,7 @@ def cus_log(x_value, base_x):
     """
     return np.log(x_value) / np.log(base_x)
 
+
 def reward_rescaling(loop_rew_datas, gamma=0.99):
     '''calculate the standard variation value for reward rescaling'''
     data_len = len(loop_rew_datas)
@@ -21,9 +22,10 @@ def reward_rescaling(loop_rew_datas, gamma=0.99):
     for i in range(data_len):
         discount_data.append(loop_rew_datas[i] * (gamma ** ((data_len - 1) - i)))
     # return np.std(loop_rew_datas)
-    return np.std(discount_data)
+    return np.mean(discount_data), np.std(discount_data)
 
-def linear_schedule(initial_value: float, lowest_value: float = 0.000) -> Callable[[float], float]:
+
+def linear_schedule(initial_value: float, lowest_value: float = 0.000, up=False) -> Callable[[float], float]:
     """
     Linear learning rate schedule.
 
@@ -32,14 +34,17 @@ def linear_schedule(initial_value: float, lowest_value: float = 0.000) -> Callab
       current learning rate depending on remaining progress
     """
 
-    def func(progress_remaining: float) -> float:
+    def func(progress_remaining: float, up=up) -> float:
         """
         Progress will decrease from 1 (beginning) to 0.
 
         :param progress_remaining:
         :return: current learning rate
         """
-        return progress_remaining * initial_value + lowest_value
+        if up is True:
+            return (1 - progress_remaining) * initial_value + lowest_value
+        else:
+            return progress_remaining * initial_value + lowest_value
 
     return func
 
@@ -97,8 +102,16 @@ def euclidean_distance(a, b):
     assert len(a) == len(b)
     return np.linalg.norm(a - b)
 
+def euler_angle_distance(a, b):
+    '''the euler angle distance'''
+    assert len(a) == len(b)
+    a = np.cos(a)
+    b = np.cos(b)
+    dis = euclidean_distance(a, b)
+    return dis
 
 def cosine_distance(a, b):
+    '''get the cosine distance of two vectors, not for euler vector'''
     # print(a.shape, b.shape)
     assert len(a) == len(b)
     dis = pdist(np.vstack([a, b]), 'cosine')[0]
