@@ -8,9 +8,12 @@
       <general gaintype="fixed" biastype="affine" ctrlrange="-6.2831 6.2831" gainprm="2000" biasprm="0 -2000 -400"
         forcerange="-150 150"/>
       <default class="size3L">
+        <joint armature="0.1" damping="200" />
+        <position kp="10000" forcerange="-150 150" ctrllimited="true" />
         <default class="size3_limitedL">
           <joint range="-3.1415 3.1415"/>
-          <general ctrlrange="-3.1415 3.1415"/>
+<!--          <general ctrlrange="-3.1415 3.1415"/>-->
+          <position kp="10000" ctrlrange="-3.14 3.14" ctrllimited="true" />
         </default>
       </default>
       <default class="finger">
@@ -18,7 +21,9 @@
         <general dyntype="none" biastype="affine" ctrlrange="0 0.07" forcerange="-150 150"/>
       </default>
       <default class="size1L">
-        <general gainprm="500" biasprm="0 -500 -100" forcerange="-28 28"/>
+        <joint armature="0.1" damping="50" />
+<!--        <general gainprm="500" biasprm="0 -500 -100" forcerange="-28 28"/>-->
+        <position kp="9000" forcerange="-28 28" />
       </default>
       <default class="visualL">
         <geom type="mesh" contype="0" conaffinity="0" group="2"/>
@@ -73,7 +78,7 @@
   </asset>
 
   <worldbody>
-    <body name="baseL" pos="-0.5 0 0.816" quat="0 0 0 1" childclass="ur5eL">
+    <body name="baseL" pos="-0.5 0 0.816" quat="1 0 0 0" childclass="ur5eL">
       <inertial mass="4.0" pos="0 0 0" diaginertia="0.00443333156 0.00443333156 0.0072"/>
       <geom mesh="base_0L" material="blackL" class="visualL"/>
       <geom mesh="base_1L" material="jointgrayL" class="visualL"/>
@@ -85,7 +90,7 @@
         <geom mesh="shoulder_2L" material="jointgrayL" class="visualL"/>
         <geom class="collisionL" size="0.06 0.06" pos="0 0 -0.04"/>
         <body name="upper_arm_linkL" pos="0 0.138 0" quat="1 0 1 0">
-          <inertial mass="8.393" pos="0 0 0.2125" diaginertia="0.133886 0.133886 0.0151074"/>
+          <inertial mass="4.393" pos="0 0 0.2125" diaginertia="0.133886 0.133886 0.0151074"/>
           <joint name="shoulder_lift_jointL" class="size3L"/>
           <geom mesh="upperarm_0L" material="linkgrayL" class="visualL"/>
           <geom mesh="upperarm_1L" material="blackL" class="visualL"/>
@@ -164,13 +169,13 @@
   </equality>
   
   <actuator>
-    <general class="size3L" name="shoulder_panL" joint="shoulder_pan_jointL"/>
-    <general class="size3L" name="shoulder_liftL" joint="shoulder_lift_jointL"/>
-    <general class="size3_limitedL" name="elbowL" joint="elbow_jointL"/>
-    <general class="size1L" name="wrist_1L" joint="wrist_1_jointL"/>
-    <general class="size1L" name="wrist_2L" joint="wrist_2_jointL"/>
-    <general class="size1L" name="wrist_3L" joint="wrist_3_jointL"/>
-    <general class="finger" name="fingers" joint="finger_joint1"/>
+    <position class="size3L" name="shoulder_panL" joint="shoulder_pan_jointL"/>
+    <position class="size3L" name="shoulder_liftL" joint="shoulder_lift_jointL"/>
+    <position class="size3_limitedL" name="elbowL" joint="elbow_jointL"/>
+    <position class="size1L" name="wrist_1L" joint="wrist_1_jointL"/>
+    <position class="size1L" name="wrist_2L" joint="wrist_2_jointL"/>
+    <position class="size1L" name="wrist_3L" joint="wrist_3_jointL"/>
+    <position class="finger" name="fingers" joint="finger_joint1"/>
   </actuator>
   
   <sensor>

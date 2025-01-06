@@ -24,6 +24,8 @@ robot:
   ee_pos_limitation_high: [ 0.3, 0.7, 0.8 ]
   ee_rot_limitation_low: [ -170, -15, -15 ]
   ee_rot_limitation_high: [ -100, 15, 15 ]
+  ee_rot_limitation_high_flip: [-80, 80, 170] # euler x -> y -> z
+  ee_rot_limitaion_low_flip: [-100, -80, -170]
 #  ee_rot_limitation_low: [ -100, -20, -20 ]  # for only tool
 #  ee_rot_limitation_high: [ 10,  20, 20 ]
   ee_pos_increment: 0.001 # the increment of the EEF pos when action space is 6-DoF of EEF (meter)
@@ -31,8 +33,8 @@ robot:
   mj_timestep: 0.005 # make it fast to get the sample more than 0.004, 0.002 (default) is too slow
 
 task:
-  goal_max_pos: [ 0.15, 0.6, 0.5 ]
-  goal_min_pos: [ -0.15, 0.3, 0.3 ]
+  goal_max_pos: [ 0.15, 0.65, 0.5 ]
+  goal_min_pos: [ -0.15, 0.35, 0.3 ]
   done_limit: 0.025  # the done limit in env0 (reach skill, distance, unit: meter)
 
 alg:
