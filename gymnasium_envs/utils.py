@@ -7,6 +7,33 @@ from scipy.spatial.distance import pdist
 from typing import Callable
 
 
+def quat_dis(q1, q2):
+    '''
+    distance between quaternions
+    the normal calculation method for angle distance:
+        q1 *. delta_q = q2
+        delta_q = inv(q1) *. q2
+                = (q1_w - q1_xi - q1_yj - q1_zk)(q2_w + q2_xi + q2_yj + q2_zk)
+        delta_q' = |delta_q|
+        delta_q' = cos(theta/2) + u*sin(theta/2) = delta_q'_w + delta_q'_xi + delta_q'yj + delta_q'_zk
+        cos(theta/2) = delta_q'_w
+        theta = 2 * arccos(delta_q'_w)
+    the similarity:
+        h = (q1w * q2w + q1x * q2x + q1y * q2y + q1z * q2z) / norm(q1) * norm(q2)
+        h belong to [-1, 1]
+        h = abs(h)
+
+    '''
+    # q1 = q1 / np.linalg.norm(q1)
+    # q2 = q2 / np.linalg.norm(q2)
+    # dis = 2 * np.arccos(abs(sum(q1 * q2)))
+    # the similarity method
+    q1 = q1 / np.linalg.norm(q1)
+    q2 = q2 / np.linalg.norm(q2)
+    simularity = 1 - abs(sum(q1 * q2))
+    return simularity # 0 -> 1, high -> low
+
+
 def cus_log(x_value, base_x):
     """
     :param x_value: x

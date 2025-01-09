@@ -116,9 +116,9 @@ class MJFunc:
         quat = Rotation.from_matrix(mat.reshape((3, 3))).as_quat()
         return quat
 
-    def get_site_euler(self, site: str) -> np.ndarray:
+    def get_site_euler(self, site: str, rot_type='xyz') -> np.ndarray:
         mat = self.data.site_xmat[mujoco.mj_name2id(self.model, type=6, name=site)]
-        rot = Rotation.from_matrix(mat.reshape((3, 3))).as_euler('xyz', degrees=False)
+        rot = Rotation.from_matrix(mat.reshape((3, 3))).as_euler(rot_type, degrees=False)
         return rot
 
     def get_site_mat(self, site: str) -> np.ndarray:

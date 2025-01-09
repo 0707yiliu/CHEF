@@ -147,10 +147,17 @@ class KitchenMultiTask(Task):
     ) -> Union[np.ndarray, float, bool]:
         pos_dis = euclidean_distance(achieved_goal_pos, desired_goal_pos)
         if self.curr_skill is self.specified_skills[1]:  # flip skill, the done need rotation
-            obj_euler = self.sim.get_body_euler('grab_obj')
-            target_rot = np.array([90, 0])
-            rot_dis = cosine_distance(obj_euler[:2], target_rot)
-            done = True if rot_dis < 0.1 and pos_dis < 0.01 else False
+            # obj_euler = self.sim.get_body_euler('grab_obj')
+            obj_euler = self.sim.get_site_euler('obj_state')
+            # print(obj_euler, self.sim.get_site_euler('EEFee_pos'))
+            # target_rot = np.array([90, 0])
+            # rot_dis = cosine_distance(obj_euler[:2], target_rot)
+            obj_euler_z = Rotation.from_euler('xyz', obj_euler, degrees=False).as_euler('zyx', degrees=False)[0]
+            rot_dis = np.cos(obj_euler_z) + 1 # cosine makes min in [-pi, pi] is zero, max is 2
+            pos_dis = euclidean_distance(self.goal, self.sim.get_site_euler('obj_state'))
+            suc_dis = rot_dis + pos_dis
+            done = True if suc_dis < 0.05 else False
+
         else:
             done = True if pos_dis < self.reach_done_go else False  # pouring and reach skill, the done do not need rotation
 

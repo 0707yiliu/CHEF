@@ -148,6 +148,7 @@
                       <geom type="box" size="0.008 0.05 0.014" rgba="0.5 0 0.5 1" friction="1 1 1"/>
                     </body>
                     <body name="grab_obj" pos="0 0.15 0">
+                      <site name="obj_state" pos="0 0 0" quat="1 -1 0 0"/>
                       <inertial mass="1" pos="0 0 0" diaginertia="2.375e-6 2.375e-6 7.5e-7"/>
                       <geom class="ycb_viz" mesh="006_mustard_bottle" pos="0 0 -0.05" material="006_mustard_bottle"/>
                       <geom class="ycb_col" type="mesh" mesh="006_mustard_bottle" pos="0 0 -0.05" mass="0.431"/>

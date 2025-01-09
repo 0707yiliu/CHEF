@@ -1,9 +1,13 @@
 from gymnasium.envs.registration import register
 import yaml
-with open('config/chef_v0.yml', 'r', encoding='utf-8') as cfg:
+import os
+abs_path = os.path.abspath(os.path.dirname(__file__))
+abs_path = abs_path[:abs_path.find('SoftBodyChef')+len('SoftBodyChef')]
+
+with open(abs_path + '/config/chef_v0.yml', 'r', encoding='utf-8') as cfg:
     config = yaml.load(cfg, Loader=yaml.FullLoader)
 
-with open('config/chef_v1.yml', 'r', encoding='utf-8') as cfg:
+with open(abs_path + '/config/chef_v1.yml', 'r', encoding='utf-8') as cfg:
     chef_v1_config = yaml.load(cfg, Loader=yaml.FullLoader)
 
 register(
