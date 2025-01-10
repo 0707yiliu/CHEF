@@ -565,7 +565,9 @@ class singleTool(MJRobot):
         # print('init pos:', increment_ee_pos, self.last_action_ee_pos, des_pos)
         des_pos = np.clip(des_pos, self.ee_low, self.ee_high)
         des_euler = np.clip(des_euler, self.ee_rot_low, self.ee_rot_high)
-        des_quat = Rotation.from_euler('xyz', des_euler, degrees=False).as_quat()
+        des_euler = np.deg2rad([30, 90, -100])
+        print('fixed des_euler in set_action')
+        des_quat = Rotation.from_euler('zyx', des_euler, degrees=False).as_quat()
         des_quat = np.roll(des_quat, 1)
         # print(des_pos, des_euler, des_quat)
         self.sim.set_mocap_pos('LEEF', des_pos)
@@ -641,13 +643,13 @@ class singleTool(MJRobot):
                                                  self.dmp_traj[5, (self._temporal - self._buffer_traj_size):self._temporal])
             rew_rot_traj = (rew_rot_traj_x + rew_rot_traj_y + rew_rot_traj_z) / 3
         rew_traj = rew_pos_traj + rew_rot_traj
-        # print('reward for pos:', rew_traj)
+        # print('reward - traj pos and rot:', rew_pos_traj, rew_rot_traj)
         # print('current pos:', curr_ee_pos, curr_ee_rot)
         # print('dmps traj:', self.dmp_traj[:, self.follow_dmp_step], self.follow_dmp_step)
         # input()
 
         th = 0.02  # distance is 2cm for reach skill
-        rew_dis = rew_pos + 0.05 * rew_rot
+        rew_dis = rew_pos + 0.5 * rew_rot
         if rew_dis > dis_threshold:  # negative part
             rew_dis_norm = _normalization(cus_log(rew_dis + (1 - dis_threshold), base_x=log_base),
                                               _min=dis_negative_low, _max=dis_negative_high,
@@ -705,7 +707,7 @@ class singleTool(MJRobot):
         dmp_quat = Rotation.from_euler('xyz', dmp_rot, degrees=False).as_quat()
         dmp_rot = _normalization(dmp_rot, _max=np.pi, _min=-np.pi, range_max=self.norm_max, range_min=self.norm_min)
         _item = next_reference / self.dmp_max_step
-
+        # print(_item)
         # obs = np.concatenate([norm_L_ee_pos, norm_L_ee_quat, norm_L_ee_vels, norm_L_FT_snesor, self.dmp_w])  # put the DMPs weights to observation space
         # obs = np.concatenate([L_ee_pos, L_ee_rot, L_FT_sensor, dmp_pos, dmp_rot, [_item, self._ik_active]])
         # print(self.sim.get_site_position(self.tool_site), self.dmp_traj[0:3, next_reference])
@@ -746,9 +748,10 @@ class singleTool(MJRobot):
             self.sim.set_mocap_pos('LEEF', self.last_action_ee_pos)  # reset to the init posture
             start_pos = np.copy(self.last_action_ee_pos)
             self.last_action_ee_rot = self.sim.get_body_euler(self.tool_site)
+            print(self.last_action_ee_rot)
             start_rot = np.copy(self.last_action_ee_rot)
             # start_rot = Rotation.from_quat(start_quat).as_euler('xyz', degrees=False)
-            self.target_rot = np.deg2rad(np.random.uniform([-90, -90, -30], [0, 90, 30]))
+            self.target_rot = np.deg2rad(np.random.uniform([-90, 0, 0], [0, 0, 0]))
             data_path = local_path + '../../datasets/reach/'
             data_names = os.listdir(data_path)
             data_path = data_path + random.choice(data_names)
@@ -974,12 +977,16 @@ class singleUR5e(MJRobot):
                             self.truncation_num)  # getting pos, rot and force/torque
         des_euler = np.around(self.last_action_ee_rot + increment_ee_rot, self.truncation_num)
         # print('init pos:', increment_ee_pos, self.last_action_ee_pos, des_pos)
+
+
         des_pos = np.clip(des_pos, self.ee_low + self.sim.get_body_position('baseL'),
                           self.ee_high + self.sim.get_body_position('baseL'))
+        # # !clip for training ------
         if self.env_index == 0:
             des_euler = np.clip(des_euler, self.ee_rot_low, self.ee_rot_high)
         elif self.env_index == 1:
             des_euler = np.clip(des_euler, self.ee_rot_flip_low, self.ee_rot_flip_high)
+        # # ! ------------------------
 
 
         pos_d, rot_d, self.admittance_params, self.admittance_paramsT = self.adm_controller.admittance_control(
@@ -1085,7 +1092,7 @@ class singleUR5e(MJRobot):
             ee_site_pos = self.sim.get_site_position(self.tool_site)
             pos_dis = euclidean_distance(self.goal, ee_site_pos)
             rew_pos = pos_dis
-            print(pos_dis, rew_rot, obj_euler_z)
+            # print('reward ee pos and rot:', pos_dis, rew_rot, obj_euler_z)
             # print(ee_site_pos, self.sim.get_site_position('attachment_siteL'))
             # print('-------')
             # if self.env_index == 0:
@@ -1095,7 +1102,6 @@ class singleUR5e(MJRobot):
         curr_ee_rot = self.sim.get_site_euler(self.tool_site)  # get the EEF's euler
         curr_ee_FT = self.sim.get_ft_sensor('Lforce', 'Ltorque') if self.dmp_force_enable is True else []
         curr_state = np.concatenate((curr_ee_pos, curr_ee_rot, curr_ee_FT))
-
 
         rew_pos_traj = euclidean_distance(curr_state[:3], self.dmp_traj[:3, self._temporal])
         self._buffer_traj[:, 0] = curr_state[3:6]
@@ -1112,6 +1118,7 @@ class singleUR5e(MJRobot):
                                                  self.dmp_traj[5, (self._temporal - self._buffer_traj_size):self._temporal])
             rew_rot_traj = (rew_rot_traj_x + rew_rot_traj_y + rew_rot_traj_z) / 3
         rew_traj = rew_pos_traj + rew_rot_traj
+        # print('reward - traj pos and rot:', rew_pos_traj, rew_rot_traj)
         # print('reward for pos:', rew_traj)
         # print('current pos:', curr_ee_pos, curr_ee_rot)
         # print('dmps traj:', self.dmp_traj[:, self.follow_dmp_step], self.follow_dmp_step)
@@ -1193,8 +1200,8 @@ class singleUR5e(MJRobot):
         # obs = np.concatenate([norm_L_ee_pos, norm_L_ee_quat, norm_L_ee_vels, norm_L_FT_snesor, self.dmp_w])  # put the DMPs weights to observation space
         # obs = np.concatenate([L_ee_pos, L_ee_rot, L_FT_sensor, dmp_pos, dmp_rot, [_item, self._ik_active]])
         # print(self.sim.get_site_position(self.tool_site), self.dmp_traj[0:3, next_reference])
-        obs = np.concatenate([L_ee_pos, L_ee_quat, dmp_pos, dmp_quat, [_item]])  # F/T sensor change too much in observation space 22-dim
-        # obs = np.concatenate([L_ee_pos, L_ee_quat, dmp_pos, dmp_quat, L_FT_sensor, [_item]])  # 28 dim
+        # obs = np.concatenate([L_ee_pos, L_ee_quat, dmp_pos, dmp_quat, [_item]])  # F/T sensor change too much in observation space 22-dim
+        obs = np.concatenate([L_ee_pos, L_ee_quat, dmp_pos, dmp_quat, L_FT_sensor, [_item]])  # 28 dim
         # obs = np.concatenate([L_ee_pos, L_ee_quat])  # F/T sensor change too much in observation space
         # obs = np.concatenate([L_ee_pos, L_ee_rot, L_FT_sensor, [self._ik_active]])  # F/T sensor change too much in observation space
         return obs

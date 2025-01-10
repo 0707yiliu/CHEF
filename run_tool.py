@@ -41,7 +41,7 @@ while True:
     # obs_record = np.r_[obs_record, [obs]]
     i += 1
     # print(i)
-    if i > 4000:
+    if i > 2000:
         i = 0
         env.reset()
     # print(i)

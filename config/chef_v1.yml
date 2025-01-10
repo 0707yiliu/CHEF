@@ -25,7 +25,7 @@ robot:
 #  ee_rot_limitation_high: [ -80,  20, 20 ]
   ee_rot_limitation_low: [ -120, -180, -90 ]  # for only tool
   ee_rot_limitation_high: [ 0,  180, 90 ]
-  ee_pos_increment: 0.005  # the increment of the EEF pos when action space is 6-DoF of EEF (meter)
+  ee_pos_increment: 0.001  # the increment of the EEF pos when action space is 6-DoF of EEF (meter)
   ee_rot_increment: 1  # same as ee_pos_increment' meaning (degree)
 task:
   goal_min_pos: [ -0.2, 0.4, 0.35 ]

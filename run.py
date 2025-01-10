@@ -24,7 +24,7 @@ env = gym.make(
     normalization_range=config['normalization_range'],
 )
 log_path = config['alg']['log_path']
-model_path = log_path + 'eval/Chef-v0-PPO-20250108175102/best_model.zip'
+model_path = log_path + 'eval/Chef-v0-PPO-20250109184042/best_model.zip'
 # model_path = './models/PPO/Chef-v0-20241219183544.pkl'
 if config['alg']['name'] == 'PPO':
     model = PPO.load(model_path, env=env)
@@ -41,7 +41,7 @@ while True:
     # obs_record = np.r_[obs_record, [obs]]
     i += 1
     # print(i)
-    if i > 4000:
+    if i > 2000:
         i = 0
         env.reset()
     # print(i)

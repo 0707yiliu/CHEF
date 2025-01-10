@@ -154,9 +154,10 @@ class KitchenMultiTask(Task):
             # rot_dis = cosine_distance(obj_euler[:2], target_rot)
             obj_euler_z = Rotation.from_euler('xyz', obj_euler, degrees=False).as_euler('zyx', degrees=False)[0]
             rot_dis = np.cos(obj_euler_z) + 1 # cosine makes min in [-pi, pi] is zero, max is 2
-            pos_dis = euclidean_distance(self.goal, self.sim.get_site_euler('obj_state'))
+            pos_dis = euclidean_distance(self.goal, self.sim.get_site_position('obj_state'))
             suc_dis = rot_dis + pos_dis
-            done = True if suc_dis < 0.05 else False
+            # print('suc dis:', rot_dis, pos_dis, suc_dis, self.goal, self.sim.get_site_position('obj_state'))
+            done = True if suc_dis < 0.13 else False
 
         else:
             done = True if pos_dis < self.reach_done_go else False  # pouring and reach skill, the done do not need rotation

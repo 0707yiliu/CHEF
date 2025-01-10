@@ -77,17 +77,17 @@
 <!--                    <geom type="box" size="0.001 0.001 0.001" pos="0 0.15 0" quat="1 -1 0 0"/>-->
       <inertial mass="0.1889" pos="0 0.0771683 0" quat="1 0 0 1"
         diaginertia="0.000132134 9.90863e-05 9.90863e-05"/>
-      <geom material="linkgrayL" mesh="schunkbaseL" pos="0 -0.14 0" class="visualL" rgba="0.3 0.3 0.3 0.3"/>
-      <geom type="box" size="0.06 0.035 0.03" pos="0 -0.1 0" rgba="0.3 0.3 0.3 1" friction="1"/>
+      <geom material="linkgrayL" mesh="schunkbaseL" pos="0 0 -0.14"  quat="1 1 0 0" class="visualL" rgba="0.3 0.3 0.3 0.3"/>
+      <geom type="box" size="0.06 0.035 0.03" pos="0 0 -0.1" quat="1 1 0 0" rgba="0.3 0.3 0.3 1" friction="1"/>
       <body name="finger1" pos="0.08 0 0">
         <inertial mass="0.015" pos="0 0 0" diaginertia="2.375e-6 2.375e-6 7.5e-7"/>
         <joint name="finger_joint1" class="finger"/>
-        <geom type="box"  size="0.008 0.05 0.014" rgba="0 0 1 1" friction="1"/>
+        <geom type="box"  size="0.008 0.05 0.014" quat="1 1 0 0" rgba="0 0 1 1" friction="1"/>
       </body>
       <body name="finger2" pos="-0.08 0 0">
         <inertial mass="0.015" pos="0 0 0" diaginertia="2.375e-6 2.375e-6 7.5e-7"/>
         <joint name="finger_joint2" class="finger" axis="1 0 0"/>
-        <geom type="box" size="0.008 0.05 0.014" rgba="0.5 0 0.5 1" friction="1 1 1"/>
+        <geom type="box" size="0.008 0.05 0.014" quat="1 1 0 0" rgba="0.5 0 0.5 1" friction="1 1 1"/>
       </body>
     </body>
 <!--    <body mocap='true' name="LEEF" pos="0 0.1 0.75" quat="1 0 0 0">-->
