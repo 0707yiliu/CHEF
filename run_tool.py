@@ -24,7 +24,7 @@ env = gym.make(
     normalization_range=config['normalization_range'],
 )
 log_path = config['alg']['log_path']
-model_path = log_path + 'eval/Chef-v1-PPO-20241223203447/best_model.zip'
+model_path = log_path + 'eval/Chef-v1-PPO-20250121105615/best_model.zip'
 # model_path = './models/PPO/Chef-v0-20241219183544.pkl'
 if config['alg']['name'] == 'PPO':
     model = PPO.load(model_path, env=env)
@@ -32,19 +32,40 @@ elif config['alg']['name'] == 'TD3':
     model = TD3.load(model_path, env=env)
 obs, _ = env.reset()
 i = 0
+reset_flag = False
+obs_buffer = np.empty_like(obs)
+
+import matplotlib.pyplot as plt
+def plot_data(data):
+    fig = plt.figure(figsize=(10, 10)) # robot plot
+    for plt_index in range(1, 8):
+        ax = fig.add_subplot(3, 3, plt_index)
+
+        ax.plot(data[:, plt_index-1])  # robot plot
+
+        ax.plot(data[:, plt_index + 7 - 1])  # dmp plot
+
+    plt.show()
+
 while True:
     action, _state = model.predict(obs, deterministic=True)
     obs, reward, done, _, info = env.step(action)
+    obs_buffer = np.vstack([obs_buffer, obs])
+
     # print(action)
     if done:
-        env.reset()
+        reset_flag = True
     # obs_record = np.r_[obs_record, [obs]]
     i += 1
     # print(i)
-    if i > 2000:
+    if i > config['max_step_one_episode']:
         i = 0
+        reset_flag = True
+    if reset_flag is True:
         env.reset()
-    # print(i)
+        plot_data(obs_buffer)
+        obs_buffer = np.empty_like(obs)
+        reset_flag = False
 
 # t = 0
 # curr_time = time.time()

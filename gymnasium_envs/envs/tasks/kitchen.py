@@ -156,10 +156,11 @@ class KitchenMultiTask(Task):
             rot_dis = np.cos(obj_euler_z) + 1 # cosine makes min in [-pi, pi] is zero, max is 2
             pos_dis = euclidean_distance(self.goal, self.sim.get_site_position('obj_state'))
             suc_dis = rot_dis + pos_dis
-            # print('suc dis:', rot_dis, pos_dis, suc_dis, self.goal, self.sim.get_site_position('obj_state'))
+            # print('flip suc dis:', rot_dis, pos_dis, suc_dis, self.goal, self.sim.get_site_position('obj_state'))
             done = True if suc_dis < 0.13 else False
 
         else:
+            # print('reach suc dis:', pos_dis, self.goal, self.sim.get_site_position('obj_state'))
             done = True if pos_dis < self.reach_done_go else False  # pouring and reach skill, the done do not need rotation
 
             # if done is True:
@@ -183,7 +184,8 @@ class KitchenMultiTask(Task):
             if done is True:
                 self.reach_done_go -= 0.001
                 print(
-                    f'done!, the reach done go line is {self.reach_done_go}, the lower limit is {self.reach_done_limit}.')
+                    f'done!, the reach done go line is {self.reach_done_go}, the lower limit is {self.reach_done_limit}.'
+                )
 
 
         return done
@@ -274,6 +276,8 @@ class KitchenSingleTool(Task):
         self.reset_goal_max_pos = self.config['task'][
             'goal_max_pos']  # hard code the reset goal, related to the circle_sample func
         self.reset_goal_min_pos = self.config['task']['goal_min_pos']
+        self.ee_high = np.array(self.config['robot']['ee_pos_limitation_high'])
+        self.ee_low = np.array(self.config['robot']['ee_pos_limitation_low'])
         self.basic_robot = np.zeros(3)
         #  the goal of the target task
         self.goal = self._sample_goal()
@@ -361,10 +365,12 @@ class KitchenSingleTool(Task):
         grab_obj = 'grab_obj'
         grab_obj_pos = self.sim.get_body_position(grab_obj)
         grab_obj_pos += np.random.uniform(low=-np.ones(3) * 0.005, high=np.ones(3) * 0.005)  # make noise for obj pos in observation space
-        grab_obj_pos = _normalization(grab_obj_pos, self.reset_goal_max_pos, self.reset_goal_min_pos, range_max=self.norm_max, range_min=self.norm_min)
+        # grab_obj_pos = _normalization(grab_obj_pos, self.reset_goal_max_pos, self.reset_goal_min_pos, range_max=self.norm_max, range_min=self.norm_min)
+        grab_obj_pos = _normalization(grab_obj_pos, self.ee_high, self.ee_low,
+                                      range_max=self.norm_max, range_min=self.norm_min)
         # norm_grab_obj_pos = np.clip(norm_grab_obj_pos, self.norm_min, self.norm_max)
         grab_obj_rot = self.sim.get_body_euler(grab_obj)
-        grab_obj_rot += np.random.uniform(low=-np.ones(3) * np.deg2rad(5), high=np.ones(3) * np.deg2rad(5)) # make noise for obj rot in observation space
+        grab_obj_rot += np.random.uniform(low=-np.ones(3) * np.deg2rad(10), high=np.ones(3) * np.deg2rad(10)) # make noise for obj rot in observation space
         grab_obj_quat = Rotation.from_euler('xyz', grab_obj_rot, degrees=False).as_quat()
         grab_obj_quat = _normalization(grab_obj_quat, _max=1, _min=-1, range_max=self.norm_max, range_min=self.norm_min)
         # grab_obj_rot = _normalization(grab_obj_rot, _max=np.pi, _min=-np.pi, range_max=self.norm_max, range_min=self.norm_min)

@@ -92,10 +92,10 @@ class MJFunc:
         quat = self.data.xquat[mujoco.mj_name2id(self.model, type=1, name=body)]
         return np.array(quat)
 
-    def get_body_euler(self, body: str) -> np.ndarray:
+    def get_body_euler(self, body: str, euler_dire='xyz') -> np.ndarray:
         quat = self.data.xquat[mujoco.mj_name2id(self.model, type=1, name=body)]
         roll_quat = np.roll(quat, -1)
-        euler = Rotation.from_quat(roll_quat).as_euler('xyz', degrees=False)
+        euler = Rotation.from_quat(roll_quat).as_euler(euler_dire, degrees=False)
         return euler
 
     def get_body_velocity(self, body: str) -> np.ndarray:

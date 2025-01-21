@@ -1,6 +1,7 @@
 import time
 
 import gymnasium as gym
+import matplotlib.pyplot as plt
 import numpy as np
 import gymnasium_envs
 from stable_baselines3 import PPO, TD3
@@ -24,7 +25,7 @@ env = gym.make(
     normalization_range=config['normalization_range'],
 )
 log_path = config['alg']['log_path']
-model_path = log_path + 'eval/Chef-v0-PPO-20250109184042/best_model.zip'
+model_path = log_path + 'eval/Chef-v0-PPO-20250115163048/best_model.zip'
 # model_path = './models/PPO/Chef-v0-20241219183544.pkl'
 if config['alg']['name'] == 'PPO':
     model = PPO.load(model_path, env=env)
@@ -32,19 +33,42 @@ elif config['alg']['name'] == 'TD3':
     model = TD3.load(model_path, env=env)
 obs, _ = env.reset()
 i = 0
+reset_flag = False
+obs_buffer = np.empty_like(obs)
+
+def plot_data(data):
+    fig = plt.figure(figsize=(10, 10)) # robot plot
+    for plt_index in range(1, 8):
+        ax = fig.add_subplot(3, 3, plt_index)
+
+        ax.plot(data[:, plt_index-1])  # robot plot
+
+        ax.plot(data[:, plt_index + 7 - 1])  # dmp plot
+
+    plt.show()
+
 while True:
     action, _state = model.predict(obs, deterministic=True)
     obs, reward, done, _, info = env.step(action)
+    obs_buffer = np.vstack([obs_buffer, obs])
+
     # print(action)
     if done:
-        env.reset()
+        reset_flag = True
     # obs_record = np.r_[obs_record, [obs]]
     i += 1
     # print(i)
     if i > 2000:
         i = 0
+        reset_flag = True
+    if reset_flag is True:
         env.reset()
+        plot_data(obs_buffer)
+        obs_buffer = np.empty_like(obs)
+        reset_flag = False
     # print(i)
+
+
 
 # t = 0
 # curr_time = time.time()

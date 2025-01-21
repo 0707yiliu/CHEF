@@ -13,15 +13,15 @@ kitchen_tasks_chain: {'flip_bottle':['reach', 'pick', 'reach', 'flip', 'reach', 
 }
 # the chain formed by skills, mainly used in robot part for DMPs
 demonstration_trajectories_paths: ''  # loading demonstration trajectory for different skills
-demonstration_length: 3000  # the length of the demonstration, uniformed
+demonstration_length: 2000  # the length of the demonstration, uniformed
 DMPs_weights_num: 60
-max_step_one_episode: 3100
+max_step_one_episode: 2100
 collision: False
 
 robot:
   # robot config
-  ee_pos_limitation_low: [ -0.3, 0.1, 0.2]
-  ee_pos_limitation_high: [ 0.3, 0.7, 0.8 ]
+  ee_pos_limitation_low: [ -0.25, 0.2, 0.3]
+  ee_pos_limitation_high: [ 0.25, 0.7, 0.8 ]
 #  ee_rot_limitation_low: [ -170, -15, -15 ] # for euler xyz
 #  ee_rot_limitation_high: [ -100, 15, 15 ]
   ee_rot_limitation_low: [ -15, -15, -170 ] # for euler zyx
@@ -31,12 +31,12 @@ robot:
 #  ee_rot_limitation_low: [ -100, -20, -20 ]  # for only tool
 #  ee_rot_limitation_high: [ 10,  20, 20 ]
   ee_pos_increment: 0.001 # the increment of the EEF pos when action space is 6-DoF of EEF (meter)
-  ee_rot_increment: 0.5  # same as ee_pos_increment' meaning (degree)
+  ee_rot_increment: 1  # same as ee_pos_increment' meaning (degree)
   mj_timestep: 0.005 # make it fast to get the sample more than 0.004, 0.002 (default) is too slow
 
 task:
-  goal_max_pos: [ 0.15, 0.6, 0.5 ]
-  goal_min_pos: [ -0.15, 0.3, 0.3 ]
+  goal_max_pos: [ 0.15, 0.55, 0.5 ]
+  goal_min_pos: [ -0.15, 0.35, 0.4 ]
   done_limit: 0.02  # the done limit in env0 (reach skill, distance, unit: meter)
 
 alg:
@@ -58,7 +58,7 @@ alg:
   model_path: '/home/yi/robotic_manipulation/SoftBodyChef/models/'
 
 reward_shaping:
-  weights: [1, 0.005]  # the weight for different parts
+  weights: [1, 0.01]  # the weight for different parts
   log_base: 0.5  # logarithm configuration (0 < log_base < 1)
   dis_threshold: 0.1  # the threshold for EEF distance, pos + rot
   max_EEF_distance: 2  # for testing reach skill, maximum distance in EEF
