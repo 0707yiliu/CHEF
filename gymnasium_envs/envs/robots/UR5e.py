@@ -500,6 +500,8 @@ class singleTool(MJRobot):
         self.ee_low = np.array(self.config['robot']['ee_pos_limitation_low'])
         self.ee_rot_high = np.deg2rad(self.config['robot']['ee_rot_limitation_high'])
         self.ee_rot_low = np.deg2rad(self.config['robot']['ee_rot_limitation_low'])
+        self.ee_rot_flip_high = np.deg2rad(self.config['robot']['ee_rot_limitation_high_flip'])
+        self.ee_rot_flip_low = np.deg2rad(self.config['robot']['ee_rot_limitaion_low_flip'])
         self.goal = np.zeros(3)
         self._base_pos = np.zeros(3)
         self.max_step_one_episode = self.config['max_step_one_episode']
@@ -561,10 +563,14 @@ class singleTool(MJRobot):
         # the limited action is set_dmps_traj (12-dim), which is used as the desired state for admittance controller
         des_pos = np.around(self.last_action_ee_pos + increment_ee_pos,
                             self.truncation_num)  # getting pos, rot and force/torque
+
         des_euler = np.around(self.last_action_ee_rot + increment_ee_rot, self.truncation_num)
         # print('init pos:', increment_ee_pos, self.last_action_ee_pos, des_pos)
         des_pos = np.clip(des_pos, self.ee_low, self.ee_high)
-        des_euler = np.clip(des_euler, self.ee_rot_low, self.ee_rot_high)
+        if self.env_index == 0:
+            des_euler = np.clip(des_euler, self.ee_rot_low, self.ee_rot_high)
+        elif self.env_index == 1:
+            des_euler = np.clip(des_euler, self.ee_rot_flip_low, self.ee_rot_flip_high)
         # des_euler = np.deg2rad([30, 90, -100])
         # print('fixed des_euler in set_action')
         des_quat = Rotation.from_euler('zyx', des_euler, degrees=False).as_quat()
@@ -652,7 +658,7 @@ class singleTool(MJRobot):
 
         th = 0.02  # distance is 2cm for reach skill
         rew_dis = rew_pos + 0.5 * rew_rot
-        # print('reward:', rew_pos, rew_rot)
+        print('reward:', rew_pos, rew_rot)
         # norm method
         # rew_dis = rew_pos + rew_rot
         if rew_dis > dis_threshold:  # negative part

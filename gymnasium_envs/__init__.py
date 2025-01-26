@@ -3,6 +3,7 @@ import yaml
 import os
 abs_path = os.path.abspath(os.path.dirname(__file__))
 abs_path = abs_path[:abs_path.find('SoftBodyChef')+len('SoftBodyChef')]
+# abs_path = abs_path[:abs_path.find('CHEF')+len('CHEF')]
 
 with open(abs_path + '/config/chef_v0.yml', 'r', encoding='utf-8') as cfg:
     config = yaml.load(cfg, Loader=yaml.FullLoader)
