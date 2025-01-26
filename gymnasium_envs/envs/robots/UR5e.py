@@ -658,7 +658,7 @@ class singleTool(MJRobot):
 
         th = 0.02  # distance is 2cm for reach skill
         rew_dis = rew_pos + 0.5 * rew_rot
-        print('reward:', rew_pos, rew_rot)
+        # print('reward:', rew_pos, rew_rot)
         # norm method
         # rew_dis = rew_pos + rew_rot
         if rew_dis > dis_threshold:  # negative part
