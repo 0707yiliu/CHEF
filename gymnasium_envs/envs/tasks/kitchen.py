@@ -388,8 +388,8 @@ class KitchenSingleTool(Task):
         pos_dis = euclidean_distance(achieved_goal_pos, desired_goal_pos)
         if self.curr_skill is self.specified_skills[1]:  # flip skill, the done need rotation
             obj_euler = self.sim.get_body_euler('grab_obj', 'zyx') # TODO: change to the bottle state, (obj_state but not grab_obj)
-            target_rot = np.array([90])
-            rot_dis = euler_angle_distance(obj_euler[0], target_rot)
+
+            rot_dis = abs(np.cos(obj_euler[0]) - np.cos(90))
             done = True if rot_dis < 0.1 and pos_dis < 0.005 else False
         else:
             done = True if pos_dis < self.reach_done_go else False  # pouring and reach skill, the done do not need rotation

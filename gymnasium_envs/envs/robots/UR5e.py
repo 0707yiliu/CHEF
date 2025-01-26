@@ -620,8 +620,8 @@ class singleTool(MJRobot):
             # if self.env_index == 0:
             #     rew_rot = 0  # disable the rotation distance
             if self.env_index == 1:
-                obj_euler = self.sim.get_body_euler('grab_obj')
-                rew_rot = (self.target_state[3:5], obj_euler[:2])  # get the reward of rotation, only focus on x-aixs and y-axis
+                obj_euler = self.sim.get_body_euler('grab_obj', euler_dire='zyx')
+                rew_rot = euler_angle_distance(self.target_rot, obj_euler)  # get the reward of rotation, only focus on x-aixs and y-axis
 
         # calculater trajectory err between current state and demonstration's state
         curr_ee_pos = self.sim.get_site_position(self.tool_site)  # get the EEF's pos
