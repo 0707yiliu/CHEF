@@ -4,7 +4,7 @@ import numpy as np
 
 from gymnasium_envs.envs.core import Task
 
-from gymnasium_envs.utils import circle_sample, _normalization, euclidean_distance, cosine_distance
+from gymnasium_envs.utils import circle_sample, _normalization, euclidean_distance, cosine_distance, euler_angle_distance
 from scipy.spatial.transform import Rotation
 import yaml
 
@@ -362,18 +362,20 @@ class KitchenSingleTool(Task):
         # fixed_area_pos = self.sim.get_body_position(self.fixed_area_handle)
 
         #  !the skill imitation by RL. Obs space in env contains one target for unified perspectives
-        grab_obj = 'grab_obj'
-        grab_obj_pos = self.sim.get_body_position(grab_obj)
+        grab_obj = 'obj_state'
+        grab_obj_pos = self.sim.get_site_position(grab_obj)
         grab_obj_pos += np.random.uniform(low=-np.ones(3) * 0.005, high=np.ones(3) * 0.005)  # make noise for obj pos in observation space
         # grab_obj_pos = _normalization(grab_obj_pos, self.reset_goal_max_pos, self.reset_goal_min_pos, range_max=self.norm_max, range_min=self.norm_min)
         grab_obj_pos = _normalization(grab_obj_pos, self.ee_high, self.ee_low,
                                       range_max=self.norm_max, range_min=self.norm_min)
+
         # norm_grab_obj_pos = np.clip(norm_grab_obj_pos, self.norm_min, self.norm_max)
-        grab_obj_rot = self.sim.get_body_euler(grab_obj)
+        grab_obj_rot = self.sim.get_site_euler(grab_obj)
         grab_obj_rot += np.random.uniform(low=-np.ones(3) * np.deg2rad(10), high=np.ones(3) * np.deg2rad(10)) # make noise for obj rot in observation space
         grab_obj_quat = Rotation.from_euler('xyz', grab_obj_rot, degrees=False).as_quat()
         grab_obj_quat = _normalization(grab_obj_quat, _max=1, _min=-1, range_max=self.norm_max, range_min=self.norm_min)
         # grab_obj_rot = _normalization(grab_obj_rot, _max=np.pi, _min=-np.pi, range_max=self.norm_max, range_min=self.norm_min)
+
         obs = np.concatenate([grab_obj_pos, grab_obj_quat])
         return obs
 
@@ -385,10 +387,10 @@ class KitchenSingleTool(Task):
     ) -> Union[np.ndarray, float, bool]:
         pos_dis = euclidean_distance(achieved_goal_pos, desired_goal_pos)
         if self.curr_skill is self.specified_skills[1]:  # flip skill, the done need rotation
-            obj_euler = self.sim.get_body_euler('grab_obj')
-            target_rot = np.array([90, 0])
-            rot_dis = cosine_distance(obj_euler[:2], target_rot)
-            done = True if rot_dis < 0.1 and pos_dis < 0.01 else False
+            obj_euler = self.sim.get_body_euler('grab_obj', 'zyx') # TODO: change to the bottle state, (obj_state but not grab_obj)
+            target_rot = np.array([90])
+            rot_dis = euler_angle_distance(obj_euler[0], target_rot)
+            done = True if rot_dis < 0.1 and pos_dis < 0.005 else False
         else:
             done = True if pos_dis < self.reach_done_go else False  # pouring and reach skill, the done do not need rotation
 
@@ -431,7 +433,7 @@ class KitchenSingleTool(Task):
             # if the curr skill same as the last skill, pass and reset the env, reload the xml otherwise
             pass
         else:
-            self.sim.reload_xml('scene_' + self.curr_skill + '.xml')
+            self.sim.reload_xml('scene_tool_' + self.curr_skill + '.xml')
             print('DO NOT RELOAD MJX file!!!')
             self.last_skill = self.curr_skill
         self.sim.reset() # reset first and set goal and state then, goal sample from the circle

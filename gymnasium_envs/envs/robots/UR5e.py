@@ -752,10 +752,12 @@ class singleTool(MJRobot):
         if self.env_index == 0:  # reach skill,
             # testing in the reach env for dmps
             # start_pos, start_quat = self.sim.forward_kinematics_kdl(qpos_random)  # get the reset pos and rot
+            # get ee pos (start and end)
             init_pos = np.array([0.1, 0.3, 0.6])
             self.last_action_ee_pos = init_pos
             self.sim.set_mocap_pos('LEEF', self.last_action_ee_pos)  # reset to the init posture
             start_pos = np.copy(self.last_action_ee_pos)
+            # get ee rot (start and end)
             self.last_action_ee_rot = np.deg2rad(np.random.uniform(self.config['robot']['ee_rot_limitation_low'], self.config['robot']['ee_rot_limitation_low']))
             self.sim.set_mocap_quat('LEEF', Rotation.from_euler('zyx', self.last_action_ee_pos).as_quat())
             start_rot = np.copy(self.last_action_ee_rot)
@@ -768,41 +770,28 @@ class singleTool(MJRobot):
             print(data_path)
 
 
-        # elif self.env_index == 1:  # flip skill, use IK to generate one posture, fix the Z-rotation face to the ground
-        #     ee_noise = np.random.uniform(np.ones(3) * -0.02, np.ones(3) * 0.02)
-        #     sim_euler = np.random.uniform(np.deg2rad([-10, -10, -180]), np.deg2rad([10, 10, 180]))
-        #     sim_quat = Rotation.from_euler('xyz', sim_euler, degrees=False).as_quat()  # rotation convertor
-        #     q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, target_goal - base + ee_noise, sim_quat)
-        #     inv_done = False
-        #     sample_times = 0
-        #
-        #     data_path = local_path + '../../datasets/flip/'
-        #     data_names = os.listdir(data_path)
-        #     data_path = data_path + random.choice(data_names)
-        #
-        #     while inv_done is False:
-        #         if q_inv.max() > np.pi or q_inv.min() < -np.pi:
-        #             sample_times += 1
-        #             sim_euler = np.random.uniform(np.deg2rad([-10, -10, -180]), np.deg2rad([10, 10, 180]))
-        #             sim_quat = Rotation.from_euler('xyz', sim_euler, degrees=False).as_quat()  # rotation convertor
-        #             q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, target_goal - base + ee_noise, sim_quat)
-        #             if sample_times > 500:
-        #                 _reset_goal = True
-        #                 # print(target_goal)
-        #                 # print('break')
-        #                 break
-        #         else:
-        #             inv_done = True
-        #             # print(q_inv, sim_euler, target_goal - base)
-        #             self.sim.set_joint_qpos(self.joint_list[:-1], q_inv)
-        #             self.sim.control_joints(self.actuator_list[:-1], q_inv)
-        #
-        #             # testing in the reach env for dmps
-        #             start_pos, start_quat = self.sim.forward_kinematics_kdl(q_inv)  # get the reset pos and rot
-        #             start_rot = Rotation.from_quat(start_quat).as_euler('xyz', degrees=False)
-        #             target_rot = sim_euler
-        #             target_rot[0] = 90
-        #
+        elif self.env_index == 1:  # flip skill, use IK to generate one posture, fix the Z-rotation face to the ground
+            # get ee pos (start and end)
+            ee_noise = np.random.uniform(np.ones(3) * -0.02, np.ones(3) * 0.02)
+            self.last_action_ee_pos = target_goal + ee_noise
+            self.sim.set_mocap_pos('LEEF', self.last_action_ee_pos)
+            start_pos = np.copy(self.last_action_ee_pos)
+            # get ee rot (start and end)
+            self.last_action_ee_rot = np.random.uniform(np.deg2rad([-2, -80, -100]), np.deg2rad([2, 80, -80]))
+            self.sim.set_mocap_quat('LEEF', Rotation.from_euler('zyx', self.last_action_ee_pos).as_quat())
+            start_rot = np.copy(self.last_action_ee_rot)
+
+            minus = np.random.uniform(-1, 1)
+            if minus <= 0:
+                self.target_rot = np.deg2rad(np.random.uniform([-175, -80, -100], [-165, 80, -80]))
+            else:
+                self.target_rot = np.deg2rad(np.random.uniform([165, -80, -100], [175, 80, -80]))
+
+            data_path = local_path + '../../datasets/flip/'
+            data_names = os.listdir(data_path)
+            data_path = data_path + random.choice(data_names)
+            print(data_path)
+
         #
         #
         #
