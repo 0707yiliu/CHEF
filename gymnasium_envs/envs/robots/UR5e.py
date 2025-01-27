@@ -784,6 +784,7 @@ class singleTool(MJRobot):
             self.last_action_ee_pos = target_goal + ee_noise
             self.sim.set_mocap_pos('LEEF', self.last_action_ee_pos)
             start_pos = np.copy(self.last_action_ee_pos)
+            self.sim.set_mocap_pos('virtual_goal', target_goal)
             # get ee rot (start and end)
             self.last_action_ee_rot = np.random.uniform(np.deg2rad([-2, -80, -100]), np.deg2rad([2, 80, -80]))
             self.sim.set_mocap_quat('LEEF', Rotation.from_euler('zyx', self.last_action_ee_pos).as_quat())
