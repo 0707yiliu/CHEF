@@ -40,8 +40,8 @@ alg:
   policy: 'MlpPolicy'
   clip_range: [0.05, 0.2] # the clip range for PPO, can be used as min to max in linear schedule, the begin is clip_range[1], the end is clip_range[1] + clip_range[0]
   learning_rate: 0.0003
-  ent_coef: 0.0015 # the entropy coefficasion for PPO
-  target_kl: 0.009
+  ent_coef: 0.0016 # the entropy coefficasion for PPO
+  target_kl: 0.03
   n_steps: 2048 # the testing step each epoch
   batch_size: 64
   n_epochs: 20
