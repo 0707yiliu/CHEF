@@ -26,7 +26,7 @@ env = gym.make(
 log_path = config['alg']['log_path']
 # model_path = log_path + 'eval/Chef-v1-PPO-20250121105615/best_model.zip'
 # date Chef-v1-20250124093548.pkl is one skill learning
-model_path = '/home/yi/robotic_manipulation/CHEF/models/PPO/Chef-v1-20250124093548.pkl'
+model_path = '/home/yi/robotic_manipulation/CHEF/models/PPO/Chef-v1-20250126130916.pkl'
 
 # model_path = './models/PPO/Chef-v0-20241219183544.pkl'
 if config['alg']['name'] == 'PPO':

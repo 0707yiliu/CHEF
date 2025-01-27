@@ -627,8 +627,9 @@ class singleTool(MJRobot):
             #     rew_rot = 0  # disable the rotation distance
             if self.env_index == 1:
                 obj_euler = self.sim.get_body_euler('grab_obj', euler_dire='zyx')
-                rew_rot = euler_angle_distance(self.target_rot, obj_euler)  # get the reward of rotation, only focus on x-aixs and y-axis
-
+                # print('obj rot:', np.rad2deg(obj_euler))
+                # rew_rot = euler_angle_distance(self.target_rot, obj_euler)  # get the reward of rotation, only focus on x-aixs and y-axis
+                rew_rot = abs(np.cos(obj_euler[0]) - np.cos(self.target_rot[0])) / 2
         # calculater trajectory err between current state and demonstration's state
         curr_ee_pos = self.sim.get_site_position(self.tool_site)  # get the EEF's pos
         curr_ee_rot = self.sim.get_site_euler(self.tool_site)  # get the EEF's euler
@@ -710,7 +711,7 @@ class singleTool(MJRobot):
         L_ee_pos = _normalization(L_ee_pos, self.ee_high, self.ee_low, range_max=self.norm_max, range_min=self.norm_min)
         L_ee_quat = np.copy(self.sim.get_site_quaternion(self.tool_site))
         L_ee_rot = np.copy(self.sim.get_site_euler(self.tool_site, rot_type='zyx'))
-        # print(np.rad2deg(L_ee_rot))
+        # print('robot rot:', np.rad2deg(L_ee_rot))
         L_ee_rot = _normalization(L_ee_rot, _max=self.ee_rot_high, _min=self.ee_rot_low, range_max=self.norm_max, range_min=self.norm_min)  # hard code for normalization of quaternion
         # embedding the current time of DMPs' trajectory to observation space as reference trajectory
         next_reference = self._temporal + 1
@@ -719,6 +720,7 @@ class singleTool(MJRobot):
         dmp_pos = self.dmp_traj[0:3, next_reference]
         dmp_pos = _normalization(dmp_pos, self.ee_high, self.ee_low, range_max=self.norm_max, range_min=self.norm_min)
         dmp_rot = self.dmp_traj[3:6, next_reference]
+        # print('traj rot:', np.rad2deg(dmp_rot))
         dmp_quat = Rotation.from_euler('zyx', dmp_rot, degrees=False).as_quat()
         dmp_rot = _normalization(dmp_rot, _max=np.pi, _min=-np.pi, range_max=self.norm_max, range_min=self.norm_min)
         _item = next_reference / self.dmp_max_step
