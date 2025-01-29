@@ -658,7 +658,7 @@ class singleTool(MJRobot):
         # input()
 
         th = 0.02  # distance is 2cm for reach skill
-        rew_dis = rew_pos + 0.5 * rew_rot
+        rew_dis = rew_pos + 0.1 * rew_rot
         # print('reward:', rew_pos, rew_rot)
         # norm method
         # rew_dis = rew_pos + rew_rot
@@ -787,7 +787,7 @@ class singleTool(MJRobot):
             self.sim.set_mocap_pos('virtual_goal', target_goal)
             # get ee rot (start and end)
             self.last_action_ee_rot = np.random.uniform(np.deg2rad([-2, -80, -100]), np.deg2rad([2, 80, -80]))
-            self.sim.set_mocap_quat('LEEF', Rotation.from_euler('zyx', self.last_action_ee_pos).as_quat())
+            self.sim.set_mocap_quat('LEEF', Rotation.from_euler('zyx', self.last_action_ee_rot).as_quat())
             start_rot = np.copy(self.last_action_ee_rot)
 
             minus = np.random.uniform(-1, 1)
@@ -801,18 +801,26 @@ class singleTool(MJRobot):
             data_path = data_path + random.choice(data_names)
             print(data_path)
 
-        #
-        #
-        #
-        # elif self.env_index == 2:  # pouring skill, set the position of the ee upon the round of fixed area
-        #     ee_noise = np.random.uniform(np.ones(3) * -0.02, np.ones(3) * 0.02)
-        #     sim_euler = np.random.uniform(np.deg2rad([-90, -5, -180]), np.deg2rad([-80, 5, 180]))
-        #     sim_quat = Rotation.from_euler('xyz', sim_euler, degrees=False).as_quat()  # rotation convertor
-        #     target_goal[-1] += 0.3
-        #     q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, target_goal - base + ee_noise, sim_quat)
-        #     inv_done = False
-        #     sample_times = 0
-        #
+        elif self.env_index == 2:  # pouring skill, set the position of the ee upon the round of fixed area
+            ee_noise = np.random.uniform(np.ones(3) * -0.02, np.ones(3) * 0.02)
+            self.last_action_ee_pos = target_goal + ee_noise
+            self.sim.set_mocap_pos('LEEF', self.last_action_ee_pos)
+            start_pos = np.copy(self.last_action_ee_pos)
+
+            self.last_action_ee_rot = np.random.uniform(np.deg2rad([-90, -5, -175]), np.deg2rad([-90, 5, -165]))
+            self.sim.set_mocap_quat('LEEF', Rotation.from_euler('zyx', self.last_action_ee_rot).as_quat())
+            start_rot = np.copy(self.last_action_ee_rot)
+
+            minus = np.random.uniform(-1, 1)
+            if minus <= 0:
+                self.target_rot = np.deg2rad(np.random.uniform([-100, -100, -175], [-80, -80, -165]))
+            else:
+                self.target_rot = np.deg2rad(np.random.uniform([80, 80, -175], [100, 100, -165]))
+
+            data_path = local_path + '../../datasets/pour/'
+            data_names = os.listdir(data_path)
+            data_path = data_path + random.choice(data_names)
+            print(data_path)
         #     data_path = local_path + '../../datasets/pour/'
         #     data_names = os.listdir(data_path)
         #     data_path = data_path + random.choice(data_names)
