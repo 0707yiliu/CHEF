@@ -40,14 +40,14 @@ alg:
   name: PPO # the algorithm used
   latent_networks: [128, 128]
   policy: 'MlpPolicy'
-  clip_range: [0.05, 0.15] # the clip range for PPO, can be used as min to max in linear schedule, the begin is clip_range[1], the end is clip_range[1] + clip_range[0]
+  clip_range: [0.12, 0.1] # the clip range for PPO, can be used as min to max in linear schedule, the begin is clip_range[1], the end is clip_range[1] + clip_range[0]
   learning_rate: 0.0003
-  ent_coef: 0.0017 # the entropy coefficasion for PPO
-  target_kl: 0.0009
+  ent_coef: 0.0013 # the entropy coefficasion for PPO
+  target_kl: 0.00045
   n_steps: 2048 # the testing step each epoch
   batch_size: 64
   n_epochs: 20
-  gamma: 0.99
+  gamma: 0.98
   total_timesteps: 4000000
   checkpoint_freq: 200000
   eval_freq: 20000
@@ -55,7 +55,7 @@ alg:
   model_path: '/home/yi/robotic_manipulation/SoftBodyChef/models/'
 
 reward_shaping:
-  weights: [1, 0.03]  # the weight for different parts
+  weights: [1, 0.01]  # the weight for different parts
   log_base: 0.5  # logarithm configuration (0 < log_base < 1)
   dis_threshold: 0.05  # the threshold for EEF distance, pos + rot
   max_EEF_distance: 1.5  # for testing reach skill, maximum distance in EEF
