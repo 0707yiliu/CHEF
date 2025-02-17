@@ -391,6 +391,11 @@ class KitchenSingleTool(Task):
 
             rot_dis = abs(np.cos(obj_euler[0]) - np.cos(180))
             done = True if rot_dis < 0.1 and pos_dis < 0.01 else False
+        elif self.curr_skill is self.specified_skills[2]: # flip skill, the done need euclidean distance only (between cube and bowl)
+            cube_state = self.sim.get_body_position('pourcube')
+            bowl_state = self.sim.get_body_position('bowl')
+            z_dis = abs(cube_state[-1] - bowl_state[-1])
+            done = True if z_dis < 0.02 else False
         else:
             done = True if pos_dis < self.reach_done_go else False  # pouring and reach skill, the done do not need rotation
 
@@ -443,7 +448,8 @@ class KitchenSingleTool(Task):
         # hard code for different skills' environment
         if skill_index == 0 or skill_index == 2:
             self.sim.set_mocap_pos(mocap='grab_obj', pos=self.goal)
-        # if skill_index == 2: !the pour cube in 2-env would be changed in robot config
+        # # !the pour cube in 2-env would be changed in robot config
+        # if skill_index == 2:
         #     cube_pos = np.copy(self.goal)
         #     cube_pos[-1] += 0.35
         #     self.sim.set_mocap_pos(mocap='grab_obj', pos=self.goal)

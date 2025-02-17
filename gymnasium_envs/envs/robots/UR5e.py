@@ -704,6 +704,7 @@ class singleTool(MJRobot):
 
     def get_obs(self) -> np.ndarray:
         L_ee_pos = np.copy(self.sim.get_site_position(self.tool_site))
+        # print('LEEPOS:', L_ee_pos)
         # print(L_ee_pos-self._base_pos, self.sim.get_body_position('grab_obj')-self._base_pos)
         # print(self.sim.get_site_euler(self.tool_site))
         # print(euclidean_distance(L_ee_pos, self.sim.get_body_position('grab_obj')))
@@ -804,12 +805,19 @@ class singleTool(MJRobot):
         elif self.env_index == 2:  # pouring skill, set the position of the ee upon the round of fixed area
             ee_noise = np.random.uniform(np.ones(3) * -0.02, np.ones(3) * 0.02)
             self.last_action_ee_pos = target_goal + ee_noise
+            self.last_action_ee_pos[-1] += 0.45
             self.sim.set_mocap_pos('LEEF', self.last_action_ee_pos)
             start_pos = np.copy(self.last_action_ee_pos)
 
-            self.last_action_ee_rot = np.random.uniform(np.deg2rad([-90, -5, -175]), np.deg2rad([-90, 5, -165]))
+            self.last_action_ee_rot = np.random.uniform(np.deg2rad([-80, -5, -175]), np.deg2rad([80, 5, -165]))
             self.sim.set_mocap_quat('LEEF', Rotation.from_euler('zyx', self.last_action_ee_rot).as_quat())
             start_rot = np.copy(self.last_action_ee_rot)
+
+            self.sim.set_forward()
+            # set the cube init pos
+            cube_pos = self.sim.get_body_position('bowl')
+            cube_pos[-1] += 0.1
+            self.sim.set_mocap_pos(mocap='pourcube', pos=cube_pos)
 
             minus = np.random.uniform(-1, 1)
             if minus <= 0:
@@ -821,6 +829,7 @@ class singleTool(MJRobot):
             data_names = os.listdir(data_path)
             data_path = data_path + random.choice(data_names)
             print(data_path)
+            self.sim.set_forward()
         #     data_path = local_path + '../../datasets/pour/'
         #     data_names = os.listdir(data_path)
         #     data_path = data_path + random.choice(data_names)

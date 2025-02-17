@@ -20,7 +20,7 @@ max_step_one_episode: 2500
 robot:
   # robot config
   ee_pos_limitation_low: [ -0.4, 0.0, 0.2]
-  ee_pos_limitation_high: [ 0.4, 0.8, 0.8 ]
+  ee_pos_limitation_high: [ 0.4, 0.8, 0.9 ]
 #  ee_rot_limitation_low: [ -190, -20, -20 ]
 #  ee_rot_limitation_high: [ -80,  20, 20 ]
   ee_rot_limitation_low: [ -15, -15, -170 ]  # for only tool
@@ -32,18 +32,18 @@ robot:
   ee_pos_increment: 0.0005  # the increment of the EEF pos when action space is 6-DoF of EEF (meter)
   ee_rot_increment: 0.3  # same as ee_pos_increment' meaning (degree)
 task:
-  goal_min_pos: [ -0.2, 0.4, 0.35 ]
-  goal_max_pos: [ 0.2, 0.6, 0.45 ]
+  goal_min_pos: [ -0.2, 0.4, 0.3 ]
+  goal_max_pos: [ 0.2, 0.6, 0.4 ]
   done_limit: 0.01 # the done limit in env0 (reach skill, distance, unit: meter)
 
 alg:
   name: PPO # the algorithm used
   latent_networks: [128, 128]
   policy: 'MlpPolicy'
-  clip_range: [0.12, 0.1] # the clip range for PPO, can be used as min to max in linear schedule, the begin is clip_range[1], the end is clip_range[1] + clip_range[0]
+  clip_range: [0.08, 0.13] # the clip range for PPO, can be used as min to max in linear schedule, the begin is clip_range[1], the end is clip_range[1] + clip_range[0]
   learning_rate: 0.0003
-  ent_coef: 0.0013 # the entropy coefficasion for PPO
-  target_kl: 0.00045
+  ent_coef: 0.0016 # the entropy coefficasion for PPO
+  target_kl: 0.0005
   n_steps: 2048 # the testing step each epoch
   batch_size: 64
   n_epochs: 20
