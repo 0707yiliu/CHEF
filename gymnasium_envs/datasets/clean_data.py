@@ -5,7 +5,7 @@ import random
 from gymnasium_envs.utils import interp_preprocessed_data_with_vel
 from scipy.spatial.transform import Rotation
 """plot the 3d data for position and choose the reasonable data for training"""
-skill = 'flip'
+skill = 'pour'
 path = './'+skill+'/'
 data_names = os.listdir(path)
 print(data_names)
@@ -23,7 +23,7 @@ for i in range(len(data_names)):
         ax = fig.add_subplot(2,3,plt_index)
         ax.plot(demo_ee[plt_index-1, :])
     plt.show()
-#
+
 # import open3d
 # import cv2
 # for i in range(len(data_names)):

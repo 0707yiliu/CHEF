@@ -273,8 +273,7 @@ class KitchenSingleTool(Task):
 
         # self.reset_goal_max_pos = [-0.5 + 0.4, -0.1, 1.15]  # hard code the reset goal, related to the circle_sample func
         # self.reset_goal_min_pos = [-0.5 - 0.4, -0.6, 1]
-        self.reset_goal_max_pos = self.config['task'][
-            'goal_max_pos']  # hard code the reset goal, related to the circle_sample func
+        self.reset_goal_max_pos = self.config['task']['goal_max_pos']  # hard code the reset goal, related to the circle_sample func
         self.reset_goal_min_pos = self.config['task']['goal_min_pos']
         self.ee_high = np.array(self.config['robot']['ee_pos_limitation_high'])
         self.ee_low = np.array(self.config['robot']['ee_pos_limitation_low'])
@@ -391,11 +390,18 @@ class KitchenSingleTool(Task):
 
             rot_dis = abs(np.cos(obj_euler[0]) - np.cos(180))
             done = True if rot_dis < 0.1 and pos_dis < 0.01 else False
-        elif self.curr_skill is self.specified_skills[2]: # flip skill, the done need euclidean distance only (between cube and bowl)
-            cube_state = self.sim.get_body_position('pourcube')
-            bowl_state = self.sim.get_body_position('bowl')
-            z_dis = abs(cube_state[-1] - bowl_state[-1])
-            done = True if z_dis < 0.02 else False
+        elif self.curr_skill is self.specified_skills[2]:  # flip skill, the done need euclidean distance only (between cube and bowl)
+            cube_state = self.sim.get_body_position('rigid_cube')
+            bowl_state = self.sim.get_site_position('obj_state')
+            # print(bowl_state, self.goal)
+            # z_dis = abs(cube_state[-1] - bowl_state[-1])
+            z_dis = abs(cube_state[-1] - 0)
+
+            xy_dis = euclidean_distance(cube_state[:2], bowl_state[:2])
+
+            print(z_dis, xy_dis)
+
+            done = True if z_dis < 0.045 and xy_dis < 0.23 else False
         else:
             done = True if pos_dis < self.reach_done_go else False  # pouring and reach skill, the done do not need rotation
 
@@ -444,6 +450,8 @@ class KitchenSingleTool(Task):
         self.sim.reset() # reset first and set goal and state then, goal sample from the circle
         # self.goal = circle_sample(-0.5, 0, 0.5, 0.55, 1.05, 1.1)
         self.goal = np.random.uniform(self.reset_goal_min_pos, self.reset_goal_max_pos)
+        if skill_index == 2:
+            self.goal = np.random.uniform(self.config['task']['goal_min_pour_pos'], self.config['task']['goal_max_pour_pos'])
         # print(self.goal)
         # hard code for different skills' environment
         if skill_index == 0 or skill_index == 2:

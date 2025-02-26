@@ -3,6 +3,7 @@
   <!--Grasped Object-->
       <body mocap='true' name="pourcube" pos="0.1 0.62 1.2">
           <body name="rigid_cube">
+              <inertial pos="0 0 0" mass="2.0" diaginertia="0.0102675 0.0102675 0.00666"/>
               <joint armature="0" axis="1 0 0" damping="0" limited="true" name="box_1_x" pos="0 0 0" range="-5. 5." stiffness="0" type="slide"/>
               <joint armature="0" axis="0 1 0" damping="0" limited="true" name="box_1_y" pos="0 0 0" range="-5. 5." stiffness="0" type="slide"/>
               <joint armature="0" axis="0 0 1" damping="0" limited="true" name="box_1_z" pos="0 0 0" range="-2. 2." stiffness="0" type="slide"/>
@@ -15,11 +16,11 @@
 <!--          ! for matching task observation-->
           <site name="obj_state" pos="0 0 0"/>
 <!--          -->
-          <geom type="box" size="0.2 0.2 0.02" friction="1 1 1"/>
-          <geom type="box" size="0.015 0.2 0.05" pos="0.2 0 0.05" friction="1 1 1"/>
-          <geom type="box" size="0.015 0.2 0.05" pos="-0.2 0 0.05" friction="1 1 1"/>
-          <geom type="box" size="0.2 0.015 0.05" pos="0 -0.2 0.05" friction="1 1 1"/>
-          <geom type="box" size="0.2 0.015 0.05" pos="0 0.2 0.05" friction="1 1 1"/>
+          <geom type="box" size="0.2 0.2 0.02" friction="1 1 1" contype="0" conaffinity="0"/>
+<!--          <geom type="box" size="0.015 0.2 0.05" pos="0.2 0 0.05" friction="1 1 1"/>-->
+<!--          <geom type="box" size="0.015 0.2 0.05" pos="-0.2 0 0.05" friction="1 1 1"/>-->
+<!--          <geom type="box" size="0.2 0.015 0.05" pos="0 -0.2 0.05" friction="1 1 1"/>-->
+<!--          <geom type="box" size="0.2 0.015 0.05" pos="0 0.2 0.05" friction="1 1 1"/>-->
       </body>
   </worldbody>
 

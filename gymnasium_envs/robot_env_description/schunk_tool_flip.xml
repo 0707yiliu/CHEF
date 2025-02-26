@@ -109,13 +109,13 @@
     </body>
 
     <body mocap='true' name="virtual_goal" pos="0.1 0.62 1.2">
-          <body name="virtual_cube">
-              <site name="virtual_obj" pos="0 0 0"/>
-              <inertial pos="0 0 0" mass="1" diaginertia="0.0102675 0.0102675 0.00666"/>
+      <body name="virtual_cube">
+        <site name="virtual_obj" pos="0 0 0"/>
+        <inertial pos="0 0 0" mass="1" diaginertia="0.0102675 0.0102675 0.00666"/>
 <!--              <geom type="box" pos="0 0 0" size="0.02 0.02 0.02" rgba=".5 .7 .5 1" friction="1 1 1"/>-->
-              <geom type="box" pos="0 0 0" size="0.02 0.02 0.02" rgba=".5 .7 .5 1" friction="1 1 1" contype="0" conaffinity="0"/>
-          </body>
+        <geom type="box" pos="0 0 0" size="0.02 0.02 0.02" rgba=".5 .7 .5 1" friction="1 1 1" contype="0" conaffinity="0"/>
       </body>
+    </body>
 
 <!--    <body mocap='true' name="LEEF" pos="0 0.1 0.75" quat="1 0 0 0">-->
 <!--&lt;!&ndash;      rotation order: x>y>z &ndash;&gt;-->

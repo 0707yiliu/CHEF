@@ -611,8 +611,9 @@ class singleTool(MJRobot):
         # calculater pos and rot err
         rew_rot = 0  # some envs do not need rotation reward
         if self.env_index == 2:  # pour skill, calculate the distance between cube and the area
-            cube_pos = self.sim.get_body_position('pourcube')
+            cube_pos = self.sim.get_body_position('rigid_cube')
             rew_pos = euclidean_distance(self.goal, cube_pos)
+            # print('rew dis:', rew_pos, self.goal, cube_pos)
             # rew_rot = 0  # disable the rotation distance
         else:  # flip and reach skill, calculate the distance between EEF site and target goal, contain rotation
             if self.env_index == 0:
@@ -805,7 +806,7 @@ class singleTool(MJRobot):
         elif self.env_index == 2:  # pouring skill, set the position of the ee upon the round of fixed area
             ee_noise = np.random.uniform(np.ones(3) * -0.02, np.ones(3) * 0.02)
             self.last_action_ee_pos = target_goal + ee_noise
-            self.last_action_ee_pos[-1] += 0.45
+            self.last_action_ee_pos[-1] += 0.55
             self.sim.set_mocap_pos('LEEF', self.last_action_ee_pos)
             start_pos = np.copy(self.last_action_ee_pos)
 
@@ -815,9 +816,13 @@ class singleTool(MJRobot):
 
             self.sim.set_forward()
             # set the cube init pos
-            cube_pos = self.sim.get_body_position('bowl')
-            cube_pos[-1] += 0.1
-            self.sim.set_mocap_pos(mocap='pourcube', pos=cube_pos)
+            cube_pos = np.copy(self.sim.get_body_position('bowl'))
+            # print(cube_pos, self.last_action_ee_pos)
+            cube_pos[-1] -= 0.15
+            self.sim.set_mocap_pos('pourcube', cube_pos)
+
+            self.sim.set_forward()
+                # self.sim.step()
 
             minus = np.random.uniform(-1, 1)
             if minus <= 0:
@@ -867,7 +872,10 @@ class singleTool(MJRobot):
         # the general part of DMPs' parameters
         # print('start pos:', start_pos, 'base:', base)
         # start_pos = start_pos + base
-        target_pos = self.goal  # get the reset target goal for dmp
+        if self.env_index == 0 or self.env_index == 1: # reach, flip
+            target_pos = self.goal  # get the reset target goal for dmp
+        elif self.env_index == 2: # pour
+            target_pos = self.last_action_ee_pos
         start_vels, target_vels = np.zeros(6), np.zeros(6)  # do not use velocity now
         start_forcetorque = np.zeros(6) if self.dmp_force_enable is True else []
         target_forcetorque = np.zeros(6) if self.dmp_force_enable is True else []

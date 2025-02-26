@@ -20,7 +20,7 @@ max_step_one_episode: 2500
 robot:
   # robot config
   ee_pos_limitation_low: [ -0.4, 0.0, 0.2]
-  ee_pos_limitation_high: [ 0.4, 0.8, 0.9 ]
+  ee_pos_limitation_high: [ 0.4, 0.8, 0.8 ]
 #  ee_rot_limitation_low: [ -190, -20, -20 ]
 #  ee_rot_limitation_high: [ -80,  20, 20 ]
   ee_rot_limitation_low: [ -15, -15, -170 ]  # for only tool
@@ -29,11 +29,15 @@ robot:
   ee_rot_limitaion_low_flip: [-170, -80, -100]
   ee_rot_limitation_high_pour: [ 170, 170, -165 ] # euler z y x
   ee_rot_limitaion_low_pour: [ -170, -170, -175 ]
-  ee_pos_increment: 0.0005  # the increment of the EEF pos when action space is 6-DoF of EEF (meter)
-  ee_rot_increment: 0.3  # same as ee_pos_increment' meaning (degree)
+  ee_pos_increment: 0.0002  # the increment of the EEF pos when action space is 6-DoF of EEF (meter) # for testing
+  ee_rot_increment: 0.1  # same as ee_pos_increment' meaning (degree)
+#  ee_pos_increment: 0.0005  # the increment of the EEF pos when action space is 6-DoF of EEF (meter) # for training
+#  ee_rot_increment: 0.2  # same as ee_pos_increment' meaning (degree)
 task:
   goal_min_pos: [ -0.2, 0.4, 0.3 ]
   goal_max_pos: [ 0.2, 0.6, 0.4 ]
+  goal_min_pour_pos: [ -0.2, 0.4, 0.2 ]
+  goal_max_pour_pos: [ 0.2, 0.6, 0.25 ]
   done_limit: 0.01 # the done limit in env0 (reach skill, distance, unit: meter)
 
 alg:
