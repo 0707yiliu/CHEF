@@ -1456,3 +1456,450 @@ class singleUR5e(MJRobot):
         self.sim.set_forward()
         return _reset_goal
 
+
+class singleTool_UR5e_real(MJRobot):
+    with open('config/chef_v1.yml', 'r', encoding='utf-8') as cfg:
+        config = yaml.load(cfg, Loader=yaml.FullLoader)
+    def __init__(self,
+                 sim,
+                 control_type: str = 'ee',
+                 control_ee_rot: bool = True,
+                 dmps_weights_act: bool = True,
+                 dmps_force_enable: bool = False,
+                 control_finger: bool = False,
+                 normalization_range: list = [0, 1],
+                 ) -> None:
+        self.norm_max = normalization_range[1]
+        self.norm_min = normalization_range[0]
+        # action space definition
+        n_actions = 3 if control_type == 'ee' else 6
+        n_actions += 3 if control_ee_rot is True else 0
+        n_actions += 2 if control_finger is True else 0
+        action_space = spaces.Box(self.norm_min, self.norm_max, shape=(n_actions,), dtype=np.float32)
+        # specified site in simulation
+        self.L_eef = 'LEEF'
+        self.tool_site = 'EEFee_pos'
+        self.env_index = -1
+        self.ee_high = np.array(self.config['robot']['ee_pos_limitation_high'])
+        self.ee_low = np.array(self.config['robot']['ee_pos_limitation_low'])
+        self.ee_rot_high = np.deg2rad(self.config['robot']['ee_rot_limitation_high'])
+        self.ee_rot_low = np.deg2rad(self.config['robot']['ee_rot_limitation_low'])
+        self.ee_rot_flip_high = np.deg2rad(self.config['robot']['ee_rot_limitation_high_flip'])
+        self.ee_rot_flip_low = np.deg2rad(self.config['robot']['ee_rot_limitaion_low_flip'])
+        self.goal = np.zeros(3)
+        self._base_pos = np.zeros(3)
+        self.max_step_one_episode = self.config['max_step_one_episode']
+        # DMPs configuration
+        self.dmp_max_step = self.config['demonstration_length'] # the DMPs length, should plus with the ratio for action step
+        self.dmp_x = 0
+        self.dmp_n_bfs = self.config['DMPs_weights_num']
+        self.dmp_w = np.zeros(self.dmp_n_bfs * 12) if dmps_force_enable is True else np.zeros(self.dmp_n_bfs * 6)  # hard code for shape the size of dmps weight
+        self.dmp_force_enable = dmps_force_enable  # the flag for enable force torque DMPs trajectory, delete or add in function
+        self.follow_dmp_step = 0  # the step of following DMPs trajectory
+
+        # self.ee_pos_increment_range = np.ones(3) * 0.015  # the maximum action step for EEF's pos, for limit the DMPs' random weight
+        # self.ee_rot_increment_range = np.ones(3) * np.deg2rad(5)  # the maximum action step for EEF's rot, for limit the DMPs' random weight
+        # self.ee_force_increment_range = np.ones(6) * 10 if dmps_force_enable is True else []
+        # self.ee_increment_range = np.concatenate((self.ee_pos_increment_range, self.ee_rot_increment_range, self.ee_force_increment_range))
+        # admittance controller configuration, hard code of configuration, using critical damping
+        self.adm_controller = AdmController(m=0.5, k=1000, kr=5, dt=0.01)
+        self.admittance_params = np.zeros((3, 3))  # contains acc, vel and pos in xyz derictions
+        self.admittance_paramsT = np.zeros((3, 3))
+        self.truncation_num = 4  # Number of digits to be truncated, used when set_action
+        self.last_ft = np.zeros(6)  # the last force torque sensor for guiding admittance controller, used be filtered
+        self._obs_last_ft = np.zeros(6)  # for using low-pass filter in observation space for F/T sensor
+
+        self.truncated_num = 0   # record the step item for stop the epoch
+        self._temporal = 0  # record the step item for DMPs in observation
+        self._ik_active = 1  # the flag for observation to get the ik is working or not
+        self.reward_item = 0
+        self._reward_std = 1  # for r_t/self._reward_std to get the scaling reward
+        self._reward_mean = 0 # for r_t - self._reward_mean to get the scaling reward
+        self._reward_buffer = []  # record the one epoch reward for get new standard variation reward
+
+        # record buffer, for reward calculate the distance between shape
+        self._buffer_traj_size = 200
+        self._buffer_traj = np.zeros((3, self._buffer_traj_size))
+
+
+        super().__init__(
+            sim,
+            action_space=action_space,
+            joint_index=np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]),
+            joint_force=np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]),
+            init_qpos=np.deg2rad([90, -135, 90, -90, -90, 0]),  # hard code for the robot, initial posture
+            # init_qpos=np.deg2rad([0, 0, 0, 0, 0, 0]),  # hard code for the robot, initial posture
+            joint_list=["shoulder_pan_jointL", "shoulder_lift_jointL", "elbow_jointL", "wrist_1_jointL", "wrist_2_jointL", "wrist_3_jointL", "finger_joint1"],
+            actuator_list=['shoulder_panL', 'shoulder_liftL', 'elbowL', 'wrist_1L', 'wrist_2L', 'wrist_3L', 'fingersL'],
+            sensor_list=['magnetic_1', 'magnetic_2', 'magnetic_3', 'magnetic_4']
+        )
+
+
+    def set_action(self, action: np.ndarray):
+        truncated = False  # for stop the episode when get max step
+        # fix the action
+        # action = action.copy()
+        # act_len = len(action)
+
+        increment_ee_pos = action[:3] * self.config['robot']['ee_pos_increment']
+        increment_ee_rot = action[3:] * np.deg2rad(self.config['robot']['ee_rot_increment'])
+
+        # the limited action is set_dmps_traj (12-dim), which is used as the desired state for admittance controller
+        des_pos = np.around(self.last_action_ee_pos + increment_ee_pos,
+                            self.truncation_num)  # getting pos, rot and force/torque
+
+        des_euler = np.around(self.last_action_ee_rot + increment_ee_rot, self.truncation_num)
+        # print('init pos:', increment_ee_pos, self.last_action_ee_pos, des_pos)
+        des_pos = np.clip(des_pos, self.ee_low, self.ee_high)
+        if self.env_index == 0:
+            des_euler = np.clip(des_euler, self.ee_rot_low, self.ee_rot_high)
+        elif self.env_index == 1:
+            des_euler = np.clip(des_euler, self.ee_rot_flip_low, self.ee_rot_flip_high)
+        # des_euler = np.deg2rad([30, 90, -100])
+        # print('fixed des_euler in set_action')
+        des_quat = Rotation.from_euler('zyx', des_euler, degrees=False).as_quat()
+        des_quat = np.roll(des_quat, 1)
+        # print(des_pos, des_euler, des_quat)
+        self.sim.set_mocap_pos('LEEF', des_pos)
+        self.sim.set_mocap_quat('LEEF', des_quat)
+
+        self.last_action_ee_pos = np.copy(des_pos)
+        self.last_action_ee_rot = np.copy(des_euler)
+
+        self._temporal += 1
+        if self._temporal > self.dmp_max_step - 1:
+            self._temporal = self.dmp_max_step - 1
+        self.truncated_num += 1
+        self.sim.step()
+
+    def compute_reward(self):
+        """
+        compute the reward for environment, distance for example
+        For different task/skill, the unified reward type would be used:
+            Trajectory's distance + Goal distance
+            (because we do not know the goal distance for different skill, we get the input directly rather function)
+        Returns:
+            Float type distance for goal task
+        """
+        weights = self.config['reward_shaping']['weights']  # the weight for all reward factors, index 0: pos and rot err, index 1: trajectory err
+        log_base = self.config['reward_shaping']['log_base']  # logarithm configuration (0<log_base<1)
+        dis_threshold = self.config['reward_shaping']['dis_threshold']  # if the distance lower than dis_threshold (like 10 cm, 0.1), the reward go to positive
+        traj_threshold = self.config['reward_shaping']['max_traj_diff']  # same function as dis_threshold for demonstration trajectory from DMPs
+        # normalize the distance in negative part and positive part
+        max_dis = self.config['reward_shaping']['max_EEF_distance']
+        dis_negative_low = cus_log(x_value=max_dis + (1 - dis_threshold), base_x=log_base)  # specified, need to test if changed the parameters
+        dis_negative_high = cus_log(x_value=dis_threshold + (1 - dis_threshold), base_x=log_base)
+        dis_positive_low = cus_log(x_value=dis_threshold + (1 - dis_threshold), base_x=log_base)
+        dis_positive_high = cus_log(x_value=0 + (1 - dis_threshold), base_x=log_base)
+
+        # calculater pos and rot err
+        rew_rot = 0  # some envs do not need rotation reward
+        if self.env_index == 2:  # pour skill, calculate the distance between cube and the area
+            cube_pos = self.sim.get_body_position('rigid_cube')
+            rew_pos = euclidean_distance(self.goal, cube_pos)
+            # print('rew dis:', rew_pos, self.goal, cube_pos)
+            # rew_rot = 0  # disable the rotation distance
+        else:  # flip and reach skill, calculate the distance between EEF site and target goal, contain rotation
+            if self.env_index == 0:
+                rew_rot = euler_angle_distance(self.target_rot, self.sim.get_site_euler(self.tool_site, rot_type='zyx'))
+                # print(rew_rot)
+            # print(self.target_rot, self.sim.get_site_euler(self.tool_site), self.sim.get_site_quaternion(self.tool_site))
+            ee_site_pos = self.sim.get_site_position(self.tool_site)
+            pos_dis = euclidean_distance(self.goal, ee_site_pos)
+            # print('pos dis:', pos_dis)
+            rew_pos = pos_dis
+            # if self.env_index == 0:
+            #     rew_rot = 0  # disable the rotation distance
+            if self.env_index == 1:
+                obj_euler = self.sim.get_body_euler('grab_obj', euler_dire='zyx')
+                # print('obj rot:', np.rad2deg(obj_euler))
+                # rew_rot = euler_angle_distance(self.target_rot, obj_euler)  # get the reward of rotation, only focus on x-aixs and y-axis
+                rew_rot = abs(np.cos(obj_euler[0]) - np.cos(self.target_rot[0])) / 2
+        # calculater trajectory err between current state and demonstration's state
+        curr_ee_pos = self.sim.get_site_position(self.tool_site)  # get the EEF's pos
+        curr_ee_rot = self.sim.get_site_euler(self.tool_site)  # get the EEF's euler
+        curr_state = np.concatenate((curr_ee_pos, curr_ee_rot))
+
+        rew_pos_traj = euclidean_distance(curr_state[:3], self.dmp_traj[:3, self._temporal])
+        # print(rew_pos_traj)
+        self._buffer_traj[:, 0] = curr_state[3:6]
+        self._buffer_traj = np.roll(self._buffer_traj, -1, axis=1)
+        if self._temporal < self._buffer_traj_size:
+            rew_rot_traj = 0
+        else:
+            rew_rot_traj_x = cosine_distance(self._buffer_traj[0, :],
+                                             self.dmp_traj[3, (self._temporal - self._buffer_traj_size):self._temporal])
+            rew_rot_traj_y = cosine_distance(self._buffer_traj[1, :],
+                                             self.dmp_traj[4, (self._temporal - self._buffer_traj_size):self._temporal])
+            rew_rot_traj_z = cosine_distance(self._buffer_traj[2, :],
+                                             self.dmp_traj[5, (self._temporal - self._buffer_traj_size):self._temporal])
+            rew_rot_traj = (rew_rot_traj_x + rew_rot_traj_y + rew_rot_traj_z) / 3
+            # print(rew_rot_traj)
+        rew_traj = rew_pos_traj + rew_rot_traj
+        # rew_traj = rew_pos_traj
+        # print('reward - traj pos and rot:', rew_pos_traj, rew_rot_traj)
+        # print('current pos:', curr_ee_pos, curr_ee_rot)
+        # print('dmps traj:', self.dmp_traj[:, self.follow_dmp_step], self.follow_dmp_step)
+        # input()
+
+        th = 0.02  # distance is 2cm for reach skill
+        rew_dis = rew_pos + 0.1 * rew_rot
+        # print('reward:', rew_pos, rew_rot)
+        # norm method
+        # rew_dis = rew_pos + rew_rot
+        if rew_dis > dis_threshold:  # negative part
+            rew_dis_norm = _normalization(cus_log(rew_dis + (1 - dis_threshold), base_x=log_base),
+                                              _min=dis_negative_low, _max=dis_negative_high,
+                                              range_min=-1, range_max=0)
+        else:
+            rew_dis_norm = _normalization(cus_log(rew_dis + (1 - dis_threshold), base_x=log_base),
+                                              _min=dis_positive_low, _max=dis_positive_high,
+                                              range_min=0, range_max=1)
+        # print('rew:', rew, cus_log(rew_dis + (1 - dis_threshold), base_x=log_base))
+
+        # rew = weights[0] * rew_dis_norm + \
+        #       weights[1] * _normalization(-rew_traj,
+        #                                   _min=-traj_threshold, _max=0,
+        #                                   range_min=-1, range_max=1)
+        # rew = -weights[0] * rew_dis
+
+        # rew = weights[0] * rew_dis_norm
+
+
+
+        # rew = -weights[0] * cus_log(rew_pos + (1 - th * 1.3), 10)
+
+        rew = (-weights[0] * rew_dis) + \
+              (-weights[1] * rew_traj)
+
+        # rew -= self._reward_mean
+        # rew /= (self._reward_std + 1e-8)
+        #
+        # self._reward_buffer.append(rew)
+        # print(self._reward_mean, self._reward_std, rew)
+
+        # rew += 1 if self.env_index == 0 and rew_pos < 0.02 else 0
+
+        self.reward_item += 1
+        if self.reward_item > 2000:  # log the reward
+            logging.info(f'reward each 2000 act: object posture distance is {rew_pos} and {rew_rot}, trajectory distance is {rew_traj}')
+            self.reward_item = 0
+        return rew
+
+
+    def get_obs(self) -> np.ndarray:
+        L_ee_pos = np.copy(self.sim.get_site_position(self.tool_site))
+        # print('LEEPOS:', L_ee_pos)
+        # print(L_ee_pos-self._base_pos, self.sim.get_body_position('grab_obj')-self._base_pos)
+        # print(self.sim.get_site_euler(self.tool_site))
+        # print(euclidean_distance(L_ee_pos, self.sim.get_body_position('grab_obj')))
+        # print('------------')
+        L_ee_pos = _normalization(L_ee_pos, self.ee_high, self.ee_low, range_max=self.norm_max, range_min=self.norm_min)
+        L_ee_quat = np.copy(self.sim.get_site_quaternion(self.tool_site))
+        L_ee_rot = np.copy(self.sim.get_site_euler(self.tool_site, rot_type='zyx'))
+        # print('robot rot:', np.rad2deg(L_ee_rot))
+        L_ee_rot = _normalization(L_ee_rot, _max=self.ee_rot_high, _min=self.ee_rot_low, range_max=self.norm_max, range_min=self.norm_min)  # hard code for normalization of quaternion
+        # embedding the current time of DMPs' trajectory to observation space as reference trajectory
+        next_reference = self._temporal + 1
+        if next_reference == self.dmp_max_step:
+            next_reference = self.dmp_max_step - 1
+        dmp_pos = self.dmp_traj[0:3, next_reference]
+        dmp_pos = _normalization(dmp_pos, self.ee_high, self.ee_low, range_max=self.norm_max, range_min=self.norm_min)
+        dmp_rot = self.dmp_traj[3:6, next_reference]
+        # print('traj rot:', np.rad2deg(dmp_rot))
+        dmp_quat = Rotation.from_euler('zyx', dmp_rot, degrees=False).as_quat()
+        dmp_rot = _normalization(dmp_rot, _max=np.pi, _min=-np.pi, range_max=self.norm_max, range_min=self.norm_min)
+        _item = next_reference / self.dmp_max_step
+        # print(_item)
+        # obs = np.concatenate([norm_L_ee_pos, norm_L_ee_quat, norm_L_ee_vels, norm_L_FT_snesor, self.dmp_w])  # put the DMPs weights to observation space
+        # obs = np.concatenate([L_ee_pos, L_ee_rot, L_FT_sensor, dmp_pos, dmp_rot, [_item, self._ik_active]])
+        # print(self.sim.get_site_position(self.tool_site), self.dmp_traj[0:3, next_reference])
+        obs = np.concatenate([L_ee_pos, L_ee_quat, dmp_pos, dmp_quat, [_item]])  # F/T sensor change too much in observation space
+        # obs = np.concatenate([L_ee_pos, L_ee_quat])
+        return obs
+
+    def reset(self, index, target_goal) -> bool:
+        """
+        reset the simulator first and reset the robot posture then
+        Returns:
+            None
+        """
+        logging.info('reset')
+        # update reward scaling factor by reward buffer
+        if self._reward_buffer:
+            # print(self._reward_buffer)
+            self._reward_mean, self._reward_std = reward_rescaling(self._reward_buffer)
+        self._reward_buffer = []  # reset reward buffer for next epoch
+        self._ik_active = 1
+        self.truncated_num = 0  # reset the count fot step
+        self._temporal = 0  # reset the temporal counter for observation
+        self.goal = target_goal
+        self.env_index = index
+        self.sim.set_forward()
+        _reset_goal = False
+        # hard code for different skill's environment
+        local_path = os.path.dirname(os.path.abspath(__file__)) + os.path.sep
+        start_pos = np.zeros(3)
+        start_rot = np.zeros(3)
+        target_rot = np.zeros(3)
+
+        if self.env_index == 0:  # reach skill,
+            # testing in the reach env for dmps
+            # start_pos, start_quat = self.sim.forward_kinematics_kdl(qpos_random)  # get the reset pos and rot
+            # get ee pos (start and end)
+            init_pos = np.array([0.1, 0.3, 0.6])
+            self.last_action_ee_pos = init_pos
+            self.sim.set_mocap_pos('LEEF', self.last_action_ee_pos)  # reset to the init posture
+            start_pos = np.copy(self.last_action_ee_pos)
+            # get ee rot (start and end)
+            self.last_action_ee_rot = np.deg2rad(np.random.uniform(self.config['robot']['ee_rot_limitation_low'], self.config['robot']['ee_rot_limitation_low']))
+            self.sim.set_mocap_quat('LEEF', Rotation.from_euler('zyx', self.last_action_ee_pos).as_quat())
+            start_rot = np.copy(self.last_action_ee_rot)
+            # print(start_rot)
+            # start_rot = Rotation.from_quat(start_quat).as_euler('xyz', degrees=False)
+            self.target_rot = np.deg2rad(np.random.uniform([-10, -10, -175], [10, 10, -165]))
+            data_path = local_path + '../../datasets/reach/'
+            data_names = os.listdir(data_path)
+            data_path = data_path + random.choice(data_names)
+            print(data_path)
+
+
+        elif self.env_index == 1:  # flip skill, use IK to generate one posture, fix the Z-rotation face to the ground
+            # get ee pos (start and end)
+            ee_noise = np.random.uniform(np.ones(3) * -0.02, np.ones(3) * 0.02)
+            self.last_action_ee_pos = target_goal + ee_noise
+            self.sim.set_mocap_pos('LEEF', self.last_action_ee_pos)
+            start_pos = np.copy(self.last_action_ee_pos)
+            self.sim.set_mocap_pos('virtual_goal', target_goal)
+            # get ee rot (start and end)
+            self.last_action_ee_rot = np.random.uniform(np.deg2rad([-2, -80, -100]), np.deg2rad([2, 80, -80]))
+            self.sim.set_mocap_quat('LEEF', Rotation.from_euler('zyx', self.last_action_ee_rot).as_quat())
+            start_rot = np.copy(self.last_action_ee_rot)
+
+            minus = np.random.uniform(-1, 1)
+            if minus <= 0:
+                self.target_rot = np.deg2rad(np.random.uniform([-175, -80, -100], [-165, 80, -80]))
+            else:
+                self.target_rot = np.deg2rad(np.random.uniform([165, -80, -100], [175, 80, -80]))
+
+            data_path = local_path + '../../datasets/flip/'
+            data_names = os.listdir(data_path)
+            data_path = data_path + random.choice(data_names)
+            print(data_path)
+
+        elif self.env_index == 2:  # pouring skill, set the position of the ee upon the round of fixed area
+            ee_noise = np.random.uniform(np.ones(3) * -0.02, np.ones(3) * 0.02)
+            self.last_action_ee_pos = target_goal + ee_noise
+            self.last_action_ee_pos[-1] += 0.55
+            self.sim.set_mocap_pos('LEEF', self.last_action_ee_pos)
+            start_pos = np.copy(self.last_action_ee_pos)
+
+            self.last_action_ee_rot = np.random.uniform(np.deg2rad([-80, -5, -175]), np.deg2rad([80, 5, -165]))
+            self.sim.set_mocap_quat('LEEF', Rotation.from_euler('zyx', self.last_action_ee_rot).as_quat())
+            start_rot = np.copy(self.last_action_ee_rot)
+
+            self.sim.set_forward()
+            # set the cube init pos
+            cube_pos = np.copy(self.sim.get_body_position('bowl'))
+            # print(cube_pos, self.last_action_ee_pos)
+            cube_pos[-1] -= 0.15
+            self.sim.set_mocap_pos('pourcube', cube_pos)
+
+            self.sim.set_forward()
+                # self.sim.step()
+
+            minus = np.random.uniform(-1, 1)
+            if minus <= 0:
+                self.target_rot = np.deg2rad(np.random.uniform([-100, -100, -175], [-80, -80, -165]))
+            else:
+                self.target_rot = np.deg2rad(np.random.uniform([80, 80, -175], [100, 100, -165]))
+
+            data_path = local_path + '../../datasets/pour/'
+            data_names = os.listdir(data_path)
+            data_path = data_path + random.choice(data_names)
+            print(data_path)
+            self.sim.set_forward()
+        #     data_path = local_path + '../../datasets/pour/'
+        #     data_names = os.listdir(data_path)
+        #     data_path = data_path + random.choice(data_names)
+        #
+        #     while inv_done is False:
+        #         if q_inv.max() > np.pi or q_inv.min() < -np.pi:
+        #             sim_euler = np.random.uniform(np.deg2rad([-90, -5, -180]), np.deg2rad([-80, 5, 180]))
+        #             # sim_euler = np.random.uniform(np.deg2rad([-95, 0, 0]), np.deg2rad([-85, 10, 10]))
+        #             sim_quat = Rotation.from_euler('xyz', sim_euler, degrees=False).as_quat()  # rotation convertor
+        #             q_inv = self.sim.inverse_kinematics_kdl(self.init_qpos, target_goal - base + ee_noise, sim_quat)
+        #             # print('change')
+        #             sample_times += 1
+        #             if sample_times > 500:
+        #                 _reset_goal = True
+        #                 # print(target_goal)
+        #                 # print('break')
+        #                 break
+        #         else:
+        #             inv_done = True
+        #             # print(q_inv, sim_euler, target_goal - base)
+        #             self.sim.set_joint_qpos(self.joint_list[:-1], q_inv)
+        #             self.sim.control_joints(self.actuator_list[:-1], q_inv)
+        #             self.sim.set_forward()
+        #             cube_pos = self.sim.get_body_position('bowl')
+        #             cube_pos[-1] += 0.1
+        #             self.sim.set_mocap_pos(mocap='pourcube', pos=cube_pos)
+        #
+        #             # testing in the reach env for dmps
+        #             start_pos, start_quat = self.sim.forward_kinematics_kdl(q_inv)  # get the reset pos and rot
+        #             start_rot = Rotation.from_quat(start_quat).as_euler('xyz', degrees=False)
+        #             target_rot = sim_euler
+        #             target_rot[0] += 180
+
+
+        # the general part of DMPs' parameters
+        # print('start pos:', start_pos, 'base:', base)
+        # start_pos = start_pos + base
+        if self.env_index == 0 or self.env_index == 1: # reach, flip
+            target_pos = self.goal  # get the reset target goal for dmp
+        elif self.env_index == 2: # pour
+            target_pos = self.last_action_ee_pos
+        start_vels, target_vels = np.zeros(6), np.zeros(6)  # do not use velocity now
+        start_forcetorque = np.zeros(6) if self.dmp_force_enable is True else []
+        target_forcetorque = np.zeros(6) if self.dmp_force_enable is True else []
+        self.start_state = np.concatenate((start_pos, start_rot, start_forcetorque))
+        # print('start pos calculated:', start_pos)
+        # input()
+        self.target_state = np.concatenate((target_pos, self.target_rot, target_forcetorque))
+        demo_ee_pos, demo_ee_rot, demo_ee_posvel, demo_ee_rotvel, demo_ee_quat, demo_eeft = interp_preprocessed_data_with_vel(
+            data_path=data_path,
+            ex_length=self.dmp_max_step,
+        )
+        # ! for euler zyx
+        demo_ee_rot = Rotation.from_euler('xyz', demo_ee_rot.T).as_euler('zyx').T
+        if self.dmp_force_enable is True:
+            demonstration_trajs = np.concatenate((demo_ee_pos, demo_ee_rot, demo_eeft), axis=0)
+        else:
+            demonstration_trajs = np.concatenate((demo_ee_pos, demo_ee_rot), axis=0)
+        self.DMPs = dmps.dmp_discrete_dyn_weight(n_dmps=demonstration_trajs.shape[0],
+                                                 n_bfs=self.dmp_n_bfs,
+                                                 dt=1.0 / demonstration_trajs.shape[1])
+        dmp_w = self.DMPs.learning(demonstration_trajs, plot=False)
+        self.dmp_w = _normalization(dmp_w.flatten(), dmp_w.flatten().max(), dmp_w.flatten().min(), range_max=1, range_min=-1)
+
+        self.dmp_traj, _, _ = self.DMPs.reproduce(dyn_w_gate=False,
+                                                  initial=self.start_state,
+                                                  goal=self.target_state,
+                                                  )  # get output of dmps, do not need the gradient
+        # draw demo trajectory ------
+        # self.sim.modify_scene(self.dmp_traj[:3, :])
+        # print('--', target_pos, self.goal, start_pos)
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111, projection='3d')
+        # ax.plot(demonstration_trajs[0, :], demonstration_trajs[1, :], demonstration_trajs[2, :])
+        # ax.plot(self.dmp_traj[0, :], self.dmp_traj[1, :], self.dmp_traj[2, :])
+        # ax.set_xlabel('x')
+        # ax.set_ylabel('y')
+        # ax.set_zlabel('z')
+        # plt.show()
+        # --------------------------
+        # simulator forward
+        self.sim.set_forward()
+        return _reset_goal
+
