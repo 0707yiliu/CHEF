@@ -3,12 +3,15 @@
 # UNIVERSITY: UGent-imec
 # DEPARTMENT: Faculty of Engineering and Architecture
 # Control Engineering / Automation Engineering
+from typing import Tuple, Any
 
 import cv2
 import apriltag
 import numpy as np
 import matplotlib.pyplot as plt
 import sys, os, math, time
+
+from numpy import ndarray, dtype, generic
 from scipy.spatial.transform import Rotation as R
 import pyrealsense2 as rs
 import json
@@ -34,7 +37,8 @@ def predict(chosen_model, img, classes=[], conf=0.5):
     if classes:
         results = chosen_model.predict(img, classes=classes, conf=conf)
     else:
-        results = chosen_model.predict(img, conf=conf)
+        # results = chosen_model.predict(img, conf=conf)
+        results = chosen_model.predict(img, conf=conf, verbose=False)
 
     return results
 
@@ -44,19 +48,46 @@ def predict_and_detect(obj_list,
     '''
     names: {0: 'person', 1: 'bicycle', 2: 'car', 3: 'motorcycle', 4: 'airplane', 5: 'bus', 6: 'train', 7: 'truck', 8: 'boat', 9: 'traffic light', 10: 'fire hydrant', 11: 'stop sign', 12: 'parking meter', 13: 'bench', 14: 'bird', 15: 'cat', 16: 'dog', 17: 'horse', 18: 'sheep', 19: 'cow', 20: 'elephant', 21: 'bear', 22: 'zebra', 23: 'giraffe', 24: 'backpack', 25: 'umbrella', 26: 'handbag', 27: 'tie', 28: 'suitcase', 29: 'frisbee', 30: 'skis', 31: 'snowboard', 32: 'sports ball', 33: 'kite', 34: 'baseball bat', 35: 'baseball glove', 36: 'skateboard', 37: 'surfboard', 38: 'tennis racket', 39: 'bottle', 40: 'wine glass', 41: 'cup', 42: 'fork', 43: 'knife', 44: 'spoon', 45: 'bowl', 46: 'banana', 47: 'apple', 48: 'sandwich', 49: 'orange', 50: 'broccoli', 51: 'carrot', 52: 'hot dog', 53: 'pizza', 54: 'donut', 55: 'cake', 56: 'chair', 57: 'couch', 58: 'potted plant', 59: 'bed', 60: 'dining table', 61: 'toilet', 62: 'tv', 63: 'laptop', 64: 'mouse', 65: 'remote', 66: 'keyboard', 67: 'cell phone', 68: 'microwave', 69: 'oven', 70: 'toaster', 71: 'sink', 72: 'refrigerator', 73: 'book', 74: 'clock', 75: 'vase', 76: 'scissors', 77: 'teddy bear', 78: 'hair drier', 79: 'toothbrush'}
     '''
-    obj_w_center = 0
-    obj_h_center = 0
+    name_dic = {'person': 0, 'bicycle': 1, 'car': 2, 'motorcycle': 3, 'airplane': 4, 'bus': 5, 'train': 6, 'truck': 7, 'boat': 8, 'traffic light': 9, 'fire hydrant': 10,
+                'stop sign': 11, 'parking meter': 12, 'bench': 13, 'bird': 14, 'cat': 15, 'dog': 16, 'horse': 17, 'sheep': 18, 'cow': 19, 'elephant': 20, 'bear': 21,
+                'zebra': 22, 'giraffe': 23, 24: 'backpack', 25: 'umbrella', 26: 'handbag', 27: 'tie', 28: 'suitcase', 29: 'frisbee', 30: 'skis', 31: 'snowboard',
+                32: 'sports ball', 33: 'kite', 34: 'baseball bat', 35: 'baseball glove', 36: 'skateboard', 37: 'surfboard', 38: 'tennis racket', 39: 'bottle',
+                40: 'wine glass', 'cup': 41, 42: 'fork', 43: 'knife', 44: 'spoon', 45: 'bowl', 'banana': 46, 'apple': 47, 48: 'sandwich', 'orange': 49, 50: 'broccoli',
+                51: 'carrot', 52: 'hot dog', 53: 'pizza', 54: 'donut', 55: 'cake', 56: 'chair', 57: 'couch', 58: 'potted plant', 59: 'bed', 60: 'dining table',
+                61: 'toilet', 62: 'tv', 63: 'laptop', 64: 'mouse', 65: 'remote', 66: 'keyboard', 67: 'cell phone', 68: 'microwave', 69: 'oven', 70: 'toaster', 71: 'sink',
+                72: 'refrigerator', 73: 'book', 74: 'clock', 75: 'vase', 76: 'scissors', 77: 'teddy bear', 78: 'hair drier', 79: 'toothbrush'}
+
+    obj_w_centers = np.array([])
+    obj_h_centers = np.array([])
+    obj_det = False
     for result in results:
         for box in result.boxes:
             if result.names[int(box.cls[0])] == obj_list:
-                obj_w_center = int((box.xyxy[0][0] + box.xyxy[0][2]) / 2)
-                obj_h_center = int((box.xyxy[0][1] + box.xyxy[0][3]) / 2)
+                _obj_w_center = int((box.xyxy[0][0] + box.xyxy[0][2]) / 2)
+                _obj_h_center = int((box.xyxy[0][1] + box.xyxy[0][3]) / 2)
+                obj_w_centers = np.append(obj_w_centers, _obj_w_center)
+                obj_h_centers = np.append(obj_h_centers, _obj_h_center)
+                #
+                #
                 cv2.rectangle(img, (int(box.xyxy[0][0]), int(box.xyxy[0][1])),
                               (int(box.xyxy[0][2]), int(box.xyxy[0][3])), (255, 0, 0), rectangle_thickness)
                 cv2.putText(img, f"{result.names[int(box.cls[0])]}",
                             (int(box.xyxy[0][0]), int(box.xyxy[0][1]) - 10),
                             cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), text_thickness)
-    return img, results, [obj_w_center, obj_h_center]
+    if len(obj_w_centers) == 0: # no object detected
+        obj_w_center = 0
+        obj_h_center = 0
+        obj_det = False
+    elif len(obj_w_centers) == 1:
+        obj_w_center = obj_w_centers[0]
+        obj_h_center = obj_h_centers[0]
+        obj_det = True
+    else:
+        # TODO: hard code, hard chosen for multi object detection
+        obj_w_center = obj_w_centers[0]
+        obj_h_center = obj_h_centers[0]
+        obj_det = True
+    return img, results, [obj_w_center, obj_h_center], obj_det
 
 class AprilTagDet_Depth:
     def __init__(self, rootid=9, objid=10,
@@ -103,11 +134,14 @@ class AprilTagDet_Depth:
         self.tag_len = 8
         self.tag_outer_side = 0  # the box around apriltag
         obj_offset_x = 0  # to relative obj
-        obj_offset_y = 0  # to relative obj
+        obj_offset_y = 20  # to relative obj
         obj_offset_z = 0  # to relative obj
-        root_z_offset = 0  # to root of robot
+        root_z_offset = 2.25  # to root of robot
         root_base_x = 0  # to root of robot
         root_base_y = 0  # to root of robot
+        tag_outer_side_y = 34  # the offset from marker-side to base
+        tag_outer_side_x = 25.8  # the offset from marker-side to base
+        # 112 * 3 + 31.5 / 2 + 8 * 3 + 8 / 2
 
         self.rootTobj = np.identity(4)
         self.rootTrootside = np.identity(4)
@@ -121,9 +155,9 @@ class AprilTagDet_Depth:
         self.camTgraspobj[2, 2] = 0
         self.camTgraspobj[1, 2] = 1
         self.camTgraspobj[2, 1] = -1
-
-        self.rootTrootside[0, 3] = ((root_base_x / 2) - (self.tag_len / 2 + self.tag_outer_side))
-        self.rootTrootside[1, 3] = (self.tag_len / 2 + self.tag_outer_side + root_base_y / 2)
+        # depend on where the marker set in the real world
+        self.rootTrootside[0, 3] = (self.tag_len / 2 + self.tag_outer_side + tag_outer_side_x)
+        self.rootTrootside[1, 3] = (self.tag_len / 2 + self.tag_outer_side + root_base_y / 2 + tag_outer_side_y)
         self.rootTrootside[2, 3] = root_z_offset
         self.objsideTobj[0, 3] = -obj_offset_x
         self.objsideTobj[1, 3] = -obj_offset_y
@@ -142,8 +176,8 @@ class AprilTagDet_Depth:
 
     def yolo_v11_det(self, model, color_image, obj_name):
         obj_list = ['apple', 'orange', 'banana'] # TODO: use for search, but we need the specified object (obj_name)
-        _, _, obj_xy_coordinate = predict_and_detect(obj_name, model, color_image, conf=0.5)
-        return obj_xy_coordinate
+        _, _, obj_xy_coordinate, obj_det = predict_and_detect(obj_name, model, color_image, conf=0.3)
+        return obj_xy_coordinate, obj_det
 
     def get_aligned_images(self):
         frames = self.pipeline.wait_for_frames()
@@ -168,7 +202,8 @@ class AprilTagDet_Depth:
     def get_3d_camera_coordinate(self, _pixel, aligned_depth_frame, depth_intrin):
         x = _pixel[0]
         y = _pixel[1]
-        dis = aligned_depth_frame.get_distance(x, y)  #
+        # print('test in det:' ,x,y) # the type function needed is 'int' but not 'float'
+        dis = aligned_depth_frame.get_distance(int(x), int(y))  #
         # print ('depth: ',dis)   # unit:m
         camera_coordinate = rs.rs2_deproject_pixel_to_point(depth_intrin, _pixel, dis)
         # print ('camera_coordinate: ',camera_coordinate)
@@ -176,7 +211,7 @@ class AprilTagDet_Depth:
 
     def get_coordinates(self):
         depth_intrin, img, depth_image, depth_frame = self.get_aligned_images()
-        rootTotag = self.robot2tag(img)
+        rootTotag, obj_pos = self.robot2tag(img)
         rootToobj = self.robot2obj(6, 'apple',
                                    depth_intrin, img, depth_image, depth_frame)
         print(rootToobj)
@@ -196,7 +231,7 @@ class AprilTagDet_Depth:
             M[:3, 3] = t
             if tag.tag_id == robot_tag_id:
                 self.robotTocam = np.linalg.inv(M)
-        xy_camera_coordinate = self.yolo_v11_det(self.yolo_model, img, obj_name)  # the xy position in color image
+        xy_camera_coordinate, obj_det_flag = self.yolo_v11_det(self.yolo_model, img, obj_name)  # the xy position in color image
         _, obj_pos_in_camera = self.get_3d_camera_coordinate(xy_camera_coordinate, depth_frame, depth_intrin)
         self.camTgraspobj[:3, -1] = obj_pos_in_camera * 100
         robot2graspobj = np.matmul(self.robotTocam, self.camTgraspobj)
@@ -205,7 +240,7 @@ class AprilTagDet_Depth:
         robot2graspobj_z = -robot2graspobj[2, -1] / 100
         return np.array([robot2graspobj_x, robot2graspobj_y, robot2graspobj_z])
 
-    def robot2tag(self) -> np.ndarray:
+    def robot2tag(self, object_name='apple') -> tuple[ndarray[Any, dtype[Any]], ndarray[Any, dtype[Any]], bool]:
         depth_intrin, img, depth_image, depth_frame = self.get_aligned_images()
         cv2.waitKey(1)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -257,31 +292,33 @@ class AprilTagDet_Depth:
             #  [ 0.0143463   0.0174477   0.99974485]]
             r = R.from_matrix(self.rootTobj[:3, :3])
             rot = r.as_rotvec()
-            self.output = np.hstack([np.array([self.x, self.y, self.z]), rot])
-        # print(self.output)
+            # self.output = np.hstack([np.array([self.x, self.y, self.z]), rot])
+            self.output = np.array([self.x, self.y, self.z])
+        # print('obj from robot root:', self.output)
 
-
-        # for calculating robot to object
-
+        # for calculating robot to object -------------------------
         robot2cam = self.camTobjside[:3, -1] / 100 # robot root xyz, unit: m
         # print(robot2cam)
-        xy_camera_coordinate = self.yolo_v11_det(self.yolo_model, img, 'apple') # the xy position in color image
+        xy_camera_coordinate, obj_det_flag = self.yolo_v11_det(self.yolo_model, img, object_name)  # the xy position in color image
         _, obj_pos_in_camera = self.get_3d_camera_coordinate(xy_camera_coordinate, depth_frame, depth_intrin)
         # print(obj_pos_in_camera) # embed the xyz
         # print('robot root:', robot2cam)
         # print('robot rot:', self.camTobjside[:3, :3])
         # print(type(obj_pos_in_camera))
-        self.camTgraspobj[:3, -1] = obj_pos_in_camera * 100
-        robot2camreal = np.linalg.inv(self.camTobjside)
+        if obj_det_flag is True:
+            self.camTgraspobj[:3, -1] = obj_pos_in_camera * 100
+        robot2camreal = np.dot(self.rootTrootside, self.rootsideTcam)
         # print(robot2camreal, self.camTobjside)
         robot2graspobj = np.matmul(robot2camreal, self.camTgraspobj)
         # print('obj:', robot2graspobj[:3, -1] / 100)
         robot2graspobj_x = robot2graspobj[0, -1] / 100
         robot2graspobj_y = -robot2graspobj[1, -1] / 100
         robot2graspobj_z = -robot2graspobj[2, -1] / 100
-        print(np.array([robot2graspobj_x, robot2graspobj_y, robot2graspobj_z]))
-
-        cv2.imshow("camera-image", img)
+        obj_pos = np.array([robot2graspobj_x, robot2graspobj_y, robot2graspobj_z])
+        # print(np.array([robot2graspobj_x, robot2graspobj_y, robot2graspobj_z]))
+        # --------------------------------------------
+        if self.render is True:
+            cv2.imshow("camera-image", img)
         if self.enable_record is True:
             self.wr.write(img)
             cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
@@ -295,10 +332,11 @@ class AprilTagDet_Depth:
         #         n = str(i)
         #         filename = str("./image" + n + ".jpg")
         #         cv2.imwrite(filename, img)
-        return self.output
+        return self.output, obj_pos, obj_det_flag
 
-# for testing
-test = AprilTagDet_Depth(rootid=5, objid=6, yolo_det=True, render=True)
-while True:
-    # test.get_coordinates()
-    test.robot2tag()
+
+# # for testing
+# test = AprilTagDet_Depth(rootid=5, objid=6, yolo_det=True, render=True)
+# while True:
+#     # test.get_coordinates()
+#     board_pos, obj_pos, flag = test.robot2tag(object_name='apple')

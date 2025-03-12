@@ -9,6 +9,8 @@ import rtde_receive
 import os
 from ur_ikfast import ur_kinematics
 
+from scipy.spatial.transform import Rotation as R
+
 # rtde_c = rtde_control.RTDEControlInterface("10.42.0.162")
 
 # Parameters
@@ -30,12 +32,20 @@ ur5e_arm = ur_kinematics.URKinematics('ur5e')
 
 pose_quat = ur5e_arm.forward(actual_q)
 print('ikfast ee pos:', pose_quat)
+ik_quat = pose_quat[3:]
+# print(ik_quat)
+ik_rot = R.from_quat(ik_quat, scalar_first=False).as_euler('zyx')
+print('ikfast rot:', ik_rot, np.rad2deg(ik_rot))
 rtde_eepos = rtde_r.getActualTCPPose()
 print('rtde ee pos:', rtde_eepos)
+print('rtde ee rot:', rtde_eepos[3:], np.rad2deg(rtde_eepos[3:]))
+rtde_ee_quat = R.from_euler('xyz', rtde_eepos[3:]).as_quat(scalar_first=False)
+print('rtde real quat:', rtde_ee_quat)
+rtde_ee_rot_zyx = R.from_quat(rtde_ee_quat, scalar_first=False).as_euler('zyx')
+print('rtde eerot zyx:', rtde_ee_rot_zyx, np.rad2deg(rtde_ee_rot_zyx))
 
-ee_pos_info = np.array([ 0.66936438 ,-0.33780115 , 0.36842845 , 0.94308969  ,0.16815638 , 0.21129314,
-  0.19406304]) # x y z xyzw
-inv_q = ur5e_arm.inverse(ee_pos_info, q_guess=[2.4739255905151367, -1.306336687212326, 1.3867653051959437, -2.230870863000387, -1.5151923338519495, 3.7083895206451416])
+# ee_pos_info = np.array([0.66936438,-0.33780115 , 0.36842845 , 0.94308969  ,0.16815638 , 0.21129314, 0.19406304]) # x y z xyzw
+inv_q = ur5e_arm.inverse(pose_quat, q_guess=actual_q)
 print('inv q:', inv_q)
 
 

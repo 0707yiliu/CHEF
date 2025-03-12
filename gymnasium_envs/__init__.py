@@ -29,6 +29,12 @@ register(
 )
 
 register(
+    id="Chef-vReal",
+    entry_point="gymnasium_envs.envs:ChefEnv_vReal",
+    max_episode_steps=chef_v1_config['max_step_one_episode'],
+)
+
+register(
     id="Reach-v0",
     entry_point="gymnasium_envs.envs:ReachEnv_v0",
     max_episode_steps=config['max_step_one_episode'],

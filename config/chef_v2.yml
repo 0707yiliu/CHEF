@@ -1,4 +1,5 @@
-task_name: 'Chef-v1'
+task_name: 'Chef-vReal'
+# for real robot, matching and mapping the range of EEF
 render: False
 normalization_range: [-1, 1]
 xml_path: '/gymnasium_envs/robot_env_description/'  # root of the xml file
@@ -17,12 +18,30 @@ demonstration_length: 2000  # the length of the demonstration, uniformed
 DMPs_weights_num: 60
 max_step_one_episode: 2500
 
+# task chain
+## mixed fruit: get different fruits and mix them together
+task_chain: { 'Mix_Fruit': ['init',
+                            'reach_banana', 'pick', 'reach_area', 'release',
+                            'reach_knife', 'pick', 'reach_area', 'cut_banana', 'reach_knife_area', 'release',
+                            'reach_bottle', 'pick', 'reach_area', 'shake', 'flip', 'reach_bottle_area', 'release',
+                            'reach_stick', 'pick', 'reach_area', 'stir', 'reach_stick_area', 'release',
+              ],
+
+              'Scrambled_Eggs_Tomatoes': ['init',
+                                          'reach_tomato', 'pick', 'reach_area', 'release',
+                                          'reach_knife', 'pick', 'reach_area', 'cut_tomato', 'reach_knife_area', 'release',
+                                          'reach_board', 'pick', 'reach_pot', 'pour', 'reach_board_area', 'release',
+                                          'reach_bowl', 'pick', 'reach_pot', 'pour', 'reach_bowl_area', 'release',
+                                          'reach_egg', 'pick', 'reach_pot', 'pour', 'reach_egg_area', 'release',
+                                          'reach_boardhandle', 'pick', 'stirfrying', 'reach_boardhandle_area', 'release',
+              ],
+}
+
+
 robot:
   # robot config
   ee_pos_limitation_low: [ -0.3, -0.7, 0.0] # x range: 0.8, y range: 0.8, z range: 0.6
   ee_pos_limitation_high: [ 0.7, 0.3, 0.6 ]
-#  ee_pos_limitation_low: [ -0.4, 0.0, 0.2]
-#  ee_pos_limitation_high: [ 0.4, 0.8, 0.8 ]
 #  ee_rot_limitation_low: [ -190, -20, -20 ]
 #  ee_rot_limitation_high: [ -80,  20, 20 ]
   ee_rot_limitation_high: [ 20, 20, -70 ]
@@ -36,14 +55,10 @@ robot:
   ee_pos_increment: 0.001  # the increment of the EEF pos when action space is 6-DoF of EEF (meter) # for training
   ee_rot_increment: 0.5  # same as ee_pos_increment' meaning (degree)
 task:
-  goal_min_pos: [ -0.2, -0.5, 0.0 ]
+  goal_min_pos: [ -0.2, -0.5, 0.1 ]
   goal_max_pos: [ 0.6, -0.1, 0.2 ]
   goal_min_pour_pos: [ -0.2, 0.4, 0.2 ]
   goal_max_pour_pos: [ 0.2, 0.6, 0.25 ]
-#  goal_min_pos: [ -0.2, 0.4, 0.3 ]
-#  goal_max_pos: [ 0.2, 0.6, 0.4 ]
-#  goal_min_pour_pos: [ -0.2, 0.4, 0.2 ]
-#  goal_max_pour_pos: [ 0.2, 0.6, 0.25 ]
   done_limit: 0.01 # the done limit in env0 (reach skill, distance, unit: meter)
 
 alg:

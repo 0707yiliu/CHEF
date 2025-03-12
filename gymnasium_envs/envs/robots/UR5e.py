@@ -556,9 +556,12 @@ class singleTool(MJRobot):
         # fix the action
         # action = action.copy()
         # act_len = len(action)
-
-        increment_ee_pos = action[:3] * self.config['robot']['ee_pos_increment']
-        increment_ee_rot = action[3:] * np.deg2rad(self.config['robot']['ee_rot_increment'])
+        if self.env_index == 2:
+            increment_ee_pos = action[:3] * self.config['robot']['ee_pos_increment_pour']
+            increment_ee_rot = action[3:] * np.deg2rad(self.config['robot']['ee_rot_increment_pour'])
+        else:
+            increment_ee_pos = action[:3] * self.config['robot']['ee_pos_increment']
+            increment_ee_rot = action[3:] * np.deg2rad(self.config['robot']['ee_rot_increment'])
 
         # the limited action is set_dmps_traj (12-dim), which is used as the desired state for admittance controller
         des_pos = np.around(self.last_action_ee_pos + increment_ee_pos,
@@ -659,7 +662,7 @@ class singleTool(MJRobot):
         # input()
 
         th = 0.02  # distance is 2cm for reach skill
-        rew_dis = rew_pos + 0.1 * rew_rot
+        rew_dis = rew_pos + 0.25 * rew_rot
         # print('reward:', rew_pos, rew_rot)
         # norm method
         # rew_dis = rew_pos + rew_rot
@@ -688,7 +691,10 @@ class singleTool(MJRobot):
         rew = (-weights[0] * rew_dis) + \
               (-weights[1] * rew_traj)
 
+        # rew = -weights[0] * rew_dis
+
         # rew -= self._reward_mean
+
         # rew /= (self._reward_std + 1e-8)
         #
         # self._reward_buffer.append(rew)
@@ -763,17 +769,23 @@ class singleTool(MJRobot):
             # testing in the reach env for dmps
             # start_pos, start_quat = self.sim.forward_kinematics_kdl(qpos_random)  # get the reset pos and rot
             # get ee pos (start and end)
-            init_pos = np.array([0.1, 0.3, 0.6])
+            init_pos = np.random.uniform([-0.1, -0.7, 0.3], [0.7, 0.1, 0.6])
             self.last_action_ee_pos = init_pos
             self.sim.set_mocap_pos('LEEF', self.last_action_ee_pos)  # reset to the init posture
             start_pos = np.copy(self.last_action_ee_pos)
             # get ee rot (start and end)
-            self.last_action_ee_rot = np.deg2rad(np.random.uniform(self.config['robot']['ee_rot_limitation_low'], self.config['robot']['ee_rot_limitation_low']))
-            self.sim.set_mocap_quat('LEEF', Rotation.from_euler('zyx', self.last_action_ee_pos).as_quat())
+            self.last_action_ee_rot = np.deg2rad(np.random.uniform(self.config['robot']['ee_rot_limitation_low'],
+                                                                   self.config['robot']['ee_rot_limitation_high']))
+            self.sim.set_mocap_quat('LEEF', Rotation.from_euler('zyx', self.last_action_ee_rot).as_quat())
             start_rot = np.copy(self.last_action_ee_rot)
             # print(start_rot)
             # start_rot = Rotation.from_quat(start_quat).as_euler('xyz', degrees=False)
-            self.target_rot = np.deg2rad(np.random.uniform([-10, -10, -175], [10, 10, -165]))
+            minus = np.random.uniform(-1, 1)
+            if minus <= 0:
+                self.target_rot = np.deg2rad(np.random.uniform([-15, -15, -175], [15, 15, -165]))
+            else:
+                self.target_rot = np.deg2rad(np.random.uniform([-15, -15, -95], [15, 15, -85]))
+            # self.target_rot = np.deg2rad(np.random.uniform([-10, -10, -95], [10, 10, -85]))
             data_path = local_path + '../../datasets/reach/'
             data_names = os.listdir(data_path)
             data_path = data_path + random.choice(data_names)
@@ -1457,8 +1469,13 @@ class singleUR5e(MJRobot):
         return _reset_goal
 
 
+
+import rtde_receive
+import rtde_control
+from ur_ikfast import ur_kinematics
+
 class singleTool_UR5e_real(MJRobot):
-    with open('config/chef_v1.yml', 'r', encoding='utf-8') as cfg:
+    with open('config/chef_v2.yml', 'r', encoding='utf-8') as cfg:
         config = yaml.load(cfg, Loader=yaml.FullLoader)
     def __init__(self,
                  sim,
@@ -1521,6 +1538,15 @@ class singleTool_UR5e_real(MJRobot):
         self._buffer_traj_size = 200
         self._buffer_traj = np.zeros((3, self._buffer_traj_size))
 
+        # the setting for real UR5e robot single arm with ikfast func
+        self.ur5e_arm = ur_kinematics.URKinematics('ur5e')
+        self._ur5e_arm_base_rot = -180  # degree for transfer the base in urdf for ikfast
+        self._tool_len_in_y_axis = 0.173  # length of the EEF, configuration for the ikfast
+        #### mainly used ikfast function:
+        # self.ur5e_arm.forward(q, base_rot, tool_len) # the q is 6 joints in rad
+        # self.ur5e_arm.inverse(eepos, base_rot, tool_len) # the eepos is xyz+xyzw
+        ####
+
 
         super().__init__(
             sim,
@@ -1541,8 +1567,12 @@ class singleTool_UR5e_real(MJRobot):
         # action = action.copy()
         # act_len = len(action)
 
-        increment_ee_pos = action[:3] * self.config['robot']['ee_pos_increment']
-        increment_ee_rot = action[3:] * np.deg2rad(self.config['robot']['ee_rot_increment'])
+        if self.env_index == 2:
+            increment_ee_pos = action[:3] * self.config['robot']['ee_pos_increment_pour']
+            increment_ee_rot = action[3:] * np.deg2rad(self.config['robot']['ee_rot_increment_pour'])
+        else:
+            increment_ee_pos = action[:3] * self.config['robot']['ee_pos_increment']
+            increment_ee_rot = action[3:] * np.deg2rad(self.config['robot']['ee_rot_increment'])
 
         # the limited action is set_dmps_traj (12-dim), which is used as the desired state for admittance controller
         des_pos = np.around(self.last_action_ee_pos + increment_ee_pos,
@@ -1566,11 +1596,24 @@ class singleTool_UR5e_real(MJRobot):
         self.last_action_ee_pos = np.copy(des_pos)
         self.last_action_ee_rot = np.copy(des_euler)
 
+        ee_quat = Rotation.from_euler('zyx', des_euler, degrees=False).as_quat(scalar_first=False)
+
         self._temporal += 1
         if self._temporal > self.dmp_max_step - 1:
             self._temporal = self.dmp_max_step - 1
         self.truncated_num += 1
         self.sim.step()
+
+        ik_ee_pos = np.concatenate((self.last_action_ee_pos, ee_quat))
+
+        q_inv = self.ur5e_arm.inverse(ee_pose=ik_ee_pos,
+                                      base_rot=self._ur5e_arm_base_rot,
+                                      tool_len_in_y_axis=self._tool_len_in_y_axis,
+                                      q_guess=self.ikfast_init_qpos,
+                                      )
+        print(q_inv)
+        if q_inv is not None:
+            self.ikfast_init_qpos = np.copy(q_inv)
 
     def compute_reward(self):
         """
@@ -1724,6 +1767,16 @@ class singleTool_UR5e_real(MJRobot):
         Returns:
             None
         """
+        ## init robot when task start
+        rtde_r = rtde_receive.RTDEReceiveInterface("10.42.0.162")
+        self.ikfast_init_qpos = np.array([2.4480130672454834, -1.447563813333847, 1.697779957448141, -1.8043166599669398, -1.5562823454486292, 4.04017972946167])
+        ee_posture_real = self.ur5e_arm.forward(joint_angles=self.ikfast_init_qpos,
+                                                base_rot=self._ur5e_arm_base_rot,
+                                                tool_len_in_y_axis=self._tool_len_in_y_axis)
+        print('ikfast (px, py, pz, rx, ry ,rz, w):', ee_posture_real)
+        # input()
+        #------------------------------
+
         logging.info('reset')
         # update reward scaling factor by reward buffer
         if self._reward_buffer:
@@ -1747,17 +1800,25 @@ class singleTool_UR5e_real(MJRobot):
             # testing in the reach env for dmps
             # start_pos, start_quat = self.sim.forward_kinematics_kdl(qpos_random)  # get the reset pos and rot
             # get ee pos (start and end)
-            init_pos = np.array([0.1, 0.3, 0.6])
+            # init_pos = np.random.uniform([-0.05, -0.7, 0.3], [0.75, 0.1, 0.6])
+            init_posture = self.ur5e_arm.forward(joint_angles=self.ikfast_init_qpos, base_rot=self._ur5e_arm_base_rot, tool_len_in_y_axis=self._tool_len_in_y_axis)
+            init_pos = init_posture[:3]
             self.last_action_ee_pos = init_pos
             self.sim.set_mocap_pos('LEEF', self.last_action_ee_pos)  # reset to the init posture
             start_pos = np.copy(self.last_action_ee_pos)
             # get ee rot (start and end)
-            self.last_action_ee_rot = np.deg2rad(np.random.uniform(self.config['robot']['ee_rot_limitation_low'], self.config['robot']['ee_rot_limitation_low']))
-            self.sim.set_mocap_quat('LEEF', Rotation.from_euler('zyx', self.last_action_ee_pos).as_quat())
+            # self.last_action_ee_rot = np.deg2rad(np.random.uniform(self.config['robot']['ee_rot_limitation_low'], self.config['robot']['ee_rot_limitation_high']))
+            self.last_action_ee_rot = Rotation.from_quat(init_posture[3:], scalar_first=False).as_euler('zyx', degrees=False)
+            self.sim.set_mocap_quat('LEEF', Rotation.from_euler('zyx', self.last_action_ee_rot).as_quat())
             start_rot = np.copy(self.last_action_ee_rot)
             # print(start_rot)
             # start_rot = Rotation.from_quat(start_quat).as_euler('xyz', degrees=False)
-            self.target_rot = np.deg2rad(np.random.uniform([-10, -10, -175], [10, 10, -165]))
+            minus = np.random.uniform(-1, 1)
+            if minus <= 0:
+                self.target_rot = np.deg2rad(np.random.uniform([-15, -15, -175], [15, 15, -165]))
+            else:
+                self.target_rot = np.deg2rad(np.random.uniform([-15, -15, -95], [15, 15, -85]))
+            # self.target_rot = np.deg2rad(np.random.uniform([-10, -10, -95], [10, 10, -85]))
             data_path = local_path + '../../datasets/reach/'
             data_names = os.listdir(data_path)
             data_path = data_path + random.choice(data_names)
